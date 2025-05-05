@@ -314,6 +314,7 @@ const handlePreAiSubmit = async () => {
     await apiClient.post('/api/management_plans/', managementPlanPayload);
 
     caseStore.markCaseComplete(caseId.value);
+    caseStore.refreshCaseProgress();
     clearLocalStorage(preAiLocalStorageKey.value);
     resetFormData();
     toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
@@ -383,6 +384,7 @@ const handlePostAiSubmit = async () => {
     await apiClient.post('/api/management_plans/', managementPlanPayload);
 
     caseStore.markCaseComplete(caseId.value);
+    caseStore.refreshCaseProgress();
     clearLocalStorage(postAiLocalStorageKey.value);
     resetFormData();
 

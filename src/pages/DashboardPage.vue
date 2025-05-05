@@ -150,8 +150,10 @@ const loading = ref(true);
 const cases = computed(() => caseStore.cases);
 const completedCases = computed(() => cases.value.filter(c => {
   const progress = caseStore.getCaseProgress(c.id);
-  return progress.postCompleted;
+  // Ensure we're checking postCompleted status
+  return progress && progress.postCompleted;
 }));
+
 const completionPercentage = computed(() => 
   cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0
 );
@@ -165,6 +167,11 @@ onMounted(async () => {
   loading.value = true;
   try {
     const success = await caseStore.loadCases();
+    // Add detailed logging
+    console.log('API Fetched Cases:', cases.value);
+    console.log('Case Progress State:', caseStore.getCaseProgressState());
+    console.log('Completed Cases:', completedCases.value);
+    
     if (!success) {
       toast.add({
         severity: 'error',
@@ -192,6 +199,8 @@ const navigateToCase = (caseData: any) => {
 
 const getStatusSeverity = (caseData: any) => {
   const progress = caseStore.getCaseProgress(caseData.id);
+  // Ensure we have progress data
+  if (!progress) return 'info';
   if (progress.postCompleted) return 'success';
   if (progress.preCompleted) return 'warning';
   return 'info';
@@ -199,6 +208,8 @@ const getStatusSeverity = (caseData: any) => {
 
 const getStatusLabel = (caseData: any) => {
   const progress = caseStore.getCaseProgress(caseData.id);
+  // Ensure we have progress data
+  if (!progress) return 'Not Started';
   if (progress.postCompleted) return 'Completed';
   if (progress.preCompleted) return 'Post-AI Pending';
   return 'Not Started';
@@ -206,6 +217,8 @@ const getStatusLabel = (caseData: any) => {
 
 const getStatusIcon = (caseData: any) => {
   const progress = caseStore.getCaseProgress(caseData.id);
+  // Ensure we have progress data
+  if (!progress) return 'pi pi-play';
   if (progress.postCompleted) return 'pi pi-check-circle';
   if (progress.preCompleted) return 'pi pi-sync';
   return 'pi pi-play';
@@ -213,6 +226,8 @@ const getStatusIcon = (caseData: any) => {
 
 const getActionLabel = (caseData: any) => {
   const progress = caseStore.getCaseProgress(caseData.id);
+  // Ensure we have progress data
+  if (!progress) return 'Start';
   if (progress.postCompleted) return 'Review';
   if (progress.preCompleted) return 'Continue';
   return 'Start';

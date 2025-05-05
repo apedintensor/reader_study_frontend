@@ -47,6 +47,13 @@ interface CaseProgress {
   postCompleted: boolean;
 }
 
+interface Assessment {
+  id: number;
+  is_post_ai: boolean;
+  user_id: number;
+  case_id: number;
+}
+
 export const useCaseStore = defineStore('case', () => {
   // State
   const cases = ref<Case[]>([]);
@@ -57,13 +64,51 @@ export const useCaseStore = defineStore('case', () => {
   // Actions
   async function loadCases() {
     try {
-      const response = await apiClient.get<Case[]>('/api/cases/?limit=100');
-      cases.value = response.data;
-      // After we have cases from API, restore progress
-      loadProgressFromCache();
+      const [casesResponse, assessmentsResponse] = await Promise.all([
+        apiClient.get<Case[]>('/api/cases/?limit=100'),
+        apiClient.get<Assessment[]>('/api/assessments/')
+      ]);
+
+      cases.value = casesResponse.data;
+      
+      // Initialize progress for all cases
+      cases.value.forEach(c => {
+        caseProgress.value[c.id] = {
+          caseId: c.id,
+          preCompleted: false,
+          postCompleted: false
+        };
+      });
+
+      // Update progress based on assessments
+      assessmentsResponse.data.forEach(assessment => {
+        if (!caseProgress.value[assessment.case_id]) {
+          caseProgress.value[assessment.case_id] = {
+            caseId: assessment.case_id,
+            preCompleted: false,
+            postCompleted: false
+          };
+        }
+        
+        const progress = caseProgress.value[assessment.case_id];
+        if (assessment.is_post_ai) {
+          progress.postCompleted = true;
+          progress.preCompleted = true;
+          if (!completedCases.value.includes(assessment.case_id)) {
+            completedCases.value.push(assessment.case_id);
+          }
+        } else {
+          progress.preCompleted = true;
+        }
+      });
+
+      // Save the progress state after updating from API
+      saveProgressToCache();
       return true;
     } catch (error) {
-      console.error('Failed to load cases:', error);
+      console.error('Failed to load cases or assessments:', error);
+      // Fallback to local storage if API fails
+      loadProgressFromCache();
       return false;
     }
   }
@@ -73,14 +118,48 @@ export const useCaseStore = defineStore('case', () => {
     if (storedProgress) {
       try {
         caseProgress.value = JSON.parse(storedProgress);
+        
+        // Ensure all cases have a progress entry
+        cases.value.forEach(c => {
+          if (!caseProgress.value[c.id]) {
+            caseProgress.value[c.id] = {
+              caseId: c.id,
+              preCompleted: false,
+              postCompleted: false
+            };
+          }
+        });
+
         // Update completedCases for backward compatibility
         completedCases.value = Object.values(caseProgress.value)
           .filter(p => p.postCompleted)
           .map(p => p.caseId);
+          
+        // Save the updated progress state
+        saveProgressToCache();
       } catch (e) {
         console.error('Failed to parse case progress:', e);
         caseProgress.value = {};
+        // Initialize empty progress for all cases
+        cases.value.forEach(c => {
+          caseProgress.value[c.id] = {
+            caseId: c.id,
+            preCompleted: false,
+            postCompleted: false
+          };
+        });
+        saveProgressToCache();
       }
+    } else {
+      // If no stored progress, initialize for all cases
+      cases.value.forEach(c => {
+        caseProgress.value[c.id] = {
+          caseId: c.id,
+          preCompleted: false,
+          postCompleted: false
+        };
+      });
+      saveProgressToCache();
     }
   }
 
@@ -103,7 +182,16 @@ export const useCaseStore = defineStore('case', () => {
         completedCases.value.push(caseId);
       }
     }
+    // Save and trigger reactivity
     saveProgressToCache();
+    refreshCaseProgress();
+  }
+
+  function refreshCaseProgress() {
+    // Force reactivity update by creating a new object
+    const currentProgress = { ...caseProgress.value };
+    caseProgress.value = {};
+    caseProgress.value = currentProgress;
   }
 
   function getIncompleteCases() {
@@ -131,10 +219,16 @@ export const useCaseStore = defineStore('case', () => {
 
   function getCaseProgress(caseId: number): CaseProgress {
     if (!caseProgress.value[caseId]) {
-      caseProgress.value[caseId] = { caseId, preCompleted: false, postCompleted: false };
+      // Initialize with empty progress
+      caseProgress.value[caseId] = { 
+        caseId, 
+        preCompleted: false, 
+        postCompleted: false 
+      };
+      // Save the new initialized state
       saveProgressToCache();
     }
-    return caseProgress.value[caseId];
+    return { ...caseProgress.value[caseId] };  // Return a copy to avoid mutation
   }
 
   function goToNextCase() {
@@ -156,6 +250,14 @@ export const useCaseStore = defineStore('case', () => {
     }
   }
 
+  function getCaseProgressState() {
+    return {
+      caseProgress: caseProgress.value,
+      completedCases: completedCases.value,
+      currentIndex: currentIndex.value
+    };
+  }
+
   // Computed
   const getCurrentCase = computed(() => {
     if (cases.value.length > 0 && currentIndex.value >= 0 && currentIndex.value < cases.value.length) {
@@ -173,6 +275,7 @@ export const useCaseStore = defineStore('case', () => {
     completedCases,
     loadCases,
     markCaseComplete,
+    refreshCaseProgress,
     goToNextCase,
     goToCase,
     getCurrentCase,
@@ -181,5 +284,6 @@ export const useCaseStore = defineStore('case', () => {
     getIncompleteCases,
     getNextIncompleteCase,
     getCaseProgress,
+    getCaseProgressState
   };
 });
