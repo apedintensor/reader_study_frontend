@@ -67,7 +67,7 @@ const handleLogin = async () => {
 
       if (userFetched) {
         toast.add({ severity: 'success', summary: 'Login Successful', life: 3000 });
-        router.push('/dashboard'); // Navigate to dashboard
+        router.push('/'); // Navigate to dashboard
       } else {
          // If fetching user failed even after login, show error and clear auth
          toast.add({ severity: 'error', summary: 'Login Failed', detail: 'Could not fetch user details.', life: 3000 });

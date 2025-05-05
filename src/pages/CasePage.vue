@@ -144,6 +144,14 @@ const changeOptions = ref([
   { label: 'No', value: false },
 ]);
 
+const scoreOptions = ref([
+  { label: '1', value: 1 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5', value: 5 }
+]);
+
 // --- Data Fetching ---
 const fetchData = async () => {
   if (!caseId.value) return;
@@ -206,6 +214,33 @@ const clearLocalStorage = (key: string) => {
   localStorage.removeItem(key);
 };
 
+const resetFormData = () => {
+  // Reset pre-AI form data
+  Object.assign(preAiFormData, {
+    diagnosisRank1Id: null,
+    diagnosisRank2Id: null,
+    diagnosisRank3Id: null,
+    confidenceScore: 3,
+    managementStrategyId: null,
+    managementNotes: '',
+    certaintyScore: 3,
+  });
+
+  // Reset post-AI form data
+  Object.assign(postAiFormData, {
+    diagnosisRank1Id: null,
+    diagnosisRank2Id: null,
+    diagnosisRank3Id: null,
+    confidenceScore: 3,
+    managementStrategyId: null,
+    managementNotes: '',
+    certaintyScore: 3,
+    changeDiagnosis: null,
+    changeManagement: null,
+    aiUsefulness: null,
+  });
+};
+
 watch(preAiFormData, () => saveToLocalStorage(preAiLocalStorageKey.value, preAiFormData), { deep: true });
 watch(postAiFormData, () => saveToLocalStorage(postAiLocalStorageKey.value, postAiFormData), { deep: true });
 
@@ -245,9 +280,9 @@ const handlePreAiSubmit = async () => {
       is_post_ai: false,
       user_id: userId.value,
       case_id: caseId.value,
-      confidence_level_top1: preAiFormData.confidenceScore,
-      management_confidence: preAiFormData.confidenceScore,
-      certainty_level: preAiFormData.certaintyScore,
+      confidence_level_top1: parseInt(String(preAiFormData.confidenceScore)),
+      management_confidence: parseInt(String(preAiFormData.confidenceScore)),
+      certainty_level: parseInt(String(preAiFormData.certaintyScore)),
     };
     const assessmentRes = await apiClient.post('/api/assessments/', assessmentPayload);
     console.log('Assessment response:', assessmentRes.data);
@@ -276,6 +311,7 @@ const handlePreAiSubmit = async () => {
 
     caseStore.markCaseComplete(caseId.value);
     clearLocalStorage(preAiLocalStorageKey.value);
+    resetFormData();
     toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
 
     await fetchData();
@@ -311,9 +347,9 @@ const handlePostAiSubmit = async () => {
       is_post_ai: true,
       user_id: userId.value,
       case_id: caseId.value,
-      confidence_level_top1: postAiFormData.confidenceScore,
-      management_confidence: postAiFormData.confidenceScore,
-      certainty_level: postAiFormData.certaintyScore,
+      confidence_level_top1: parseInt(String(postAiFormData.confidenceScore)),
+      management_confidence: parseInt(String(postAiFormData.confidenceScore)),
+      certainty_level: parseInt(String(postAiFormData.certaintyScore)),
       change_diagnosis_after_ai: postAiFormData.changeDiagnosis,
       change_management_after_ai: postAiFormData.changeManagement,
       ai_usefulness: postAiFormData.aiUsefulness,
@@ -344,13 +380,25 @@ const handlePostAiSubmit = async () => {
 
     caseStore.markCaseComplete(caseId.value);
     clearLocalStorage(postAiLocalStorageKey.value);
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Post-AI assessment saved.', life: 2000 });
+    resetFormData();
 
     const nextCase = caseStore.getNextIncompleteCase();
     if (nextCase) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Case Completed!', 
+        detail: 'Great work! Moving to next case...', 
+        life: 2000 
+      });
       router.push(`/case/${nextCase.id}`);
     } else {
-      router.push('/complete');
+      toast.add({ 
+        severity: 'success', 
+        summary: '🏅 All Cases Completed!', 
+        detail: 'Thank you for your valuable contributions! You have completed all cases.', 
+        life: 5000 
+      });
+      router.push('/');
     }
   } catch (error: any) {
     console.error('Failed to submit post-AI assessment:', error);
@@ -401,14 +449,29 @@ const handleApiError = (error: any, summary: string) => {
               No images available for this case.
             </div>
 
-            <Panel header="Case Metadata" toggleable collapsed v-if="metadata" class="mb-4">
-              <ul class="list-none p-0 m-0">
-                <li v-if="metadata.age !== null && metadata.age !== undefined"><strong>Age:</strong> {{ metadata.age }}</li>
-                <li v-if="metadata.gender"><strong>Gender:</strong> {{ metadata.gender }}</li>
-                <li v-if="metadata.fever_history !== null && metadata.fever_history !== undefined"><strong>Fever History:</strong> {{ metadata.fever_history ? 'Yes' : 'No' }}</li>
-                <li v-if="metadata.psoriasis_history !== null && metadata.psoriasis_history !== undefined"><strong>Psoriasis History:</strong> {{ metadata.psoriasis_history ? 'Yes' : 'No' }}</li>
-                <li v-if="metadata.other_notes"><strong>Other Notes:</strong> {{ metadata.other_notes }}</li>
-              </ul>
+            <Panel header="Case Metadata" toggleable v-if="metadata" class="mb-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div v-if="metadata.age !== null && metadata.age !== undefined" class="metadata-item">
+                  <div class="font-semibold">Age</div>
+                  <div>{{ metadata.age }}</div>
+                </div>
+                <div v-if="metadata.gender" class="metadata-item">
+                  <div class="font-semibold">Gender</div>
+                  <div>{{ metadata.gender }}</div>
+                </div>
+                <div v-if="metadata.fever_history !== null && metadata.fever_history !== undefined" class="metadata-item">
+                  <div class="font-semibold">Fever History</div>
+                  <div>{{ metadata.fever_history ? 'Yes' : 'No' }}</div>
+                </div>
+                <div v-if="metadata.psoriasis_history !== null && metadata.psoriasis_history !== undefined" class="metadata-item">
+                  <div class="font-semibold">Psoriasis History</div>
+                  <div>{{ metadata.psoriasis_history ? 'Yes' : 'No' }}</div>
+                </div>
+              </div>
+              <div v-if="metadata.other_notes" class="mt-4">
+                <div class="font-semibold">Other Notes</div>
+                <div>{{ metadata.other_notes }}</div>
+              </div>
               <p v-if="!metadata.age && !metadata.gender && metadata.fever_history === null && metadata.psoriasis_history === null && !metadata.other_notes">
                 No metadata available.
               </p>
@@ -452,10 +515,8 @@ const handleApiError = (error: any, summary: string) => {
 
                 <div class="field">
                   <label for="confidence">Confidence in Top Diagnosis (1=Low, 5=High)</label>
-                  <div class="flex items-center">
-                    <Slider id="confidence" v-model="preAiFormData.confidenceScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                    <span>{{ preAiFormData.confidenceScore }}</span>
-                  </div>
+                  <SelectButton id="confidence" v-model="preAiFormData.confidenceScore" :options="scoreOptions" 
+                    optionLabel="label" dataKey="value" class="w-full" />
                 </div>
 
                 <div class="field">
@@ -469,10 +530,8 @@ const handleApiError = (error: any, summary: string) => {
 
                 <div class="field">
                   <label for="certainty">Certainty of Management Plan (1=Low, 5=High)</label>
-                  <div class="flex items-center">
-                    <Slider id="certainty" v-model="preAiFormData.certaintyScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                    <span>{{ preAiFormData.certaintyScore }}</span>
-                  </div>
+                  <SelectButton id="certainty" v-model="preAiFormData.certaintyScore" :options="scoreOptions" 
+                    optionLabel="label" dataKey="value" class="w-full" />
                 </div>
 
                 <Button type="submit" label="Submit Pre-AI & View AI" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
@@ -497,10 +556,8 @@ const handleApiError = (error: any, summary: string) => {
 
                 <div class="field">
                   <label for="postConfidence">Updated Confidence in Top Diagnosis (1=Low, 5=High)</label>
-                  <div class="flex items-center">
-                    <Slider id="postConfidence" v-model="postAiFormData.confidenceScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                    <span>{{ postAiFormData.confidenceScore }}</span>
-                  </div>
+                  <SelectButton id="postConfidence" v-model="postAiFormData.confidenceScore" :options="scoreOptions" 
+                    optionLabel="label" dataKey="value" class="w-full" />
                 </div>
 
                 <div class="field">
@@ -514,10 +571,8 @@ const handleApiError = (error: any, summary: string) => {
 
                 <div class="field">
                   <label for="postCertainty">Updated Certainty of Management Plan (1=Low, 5=High)</label>
-                  <div class="flex items-center">
-                    <Slider id="postCertainty" v-model="postAiFormData.certaintyScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                    <span>{{ postAiFormData.certaintyScore }}</span>
-                  </div>
+                  <SelectButton id="postCertainty" v-model="postAiFormData.certaintyScore" :options="scoreOptions" 
+                    optionLabel="label" dataKey="value" class="w-full" />
                 </div>
 
                 <Divider />
@@ -536,7 +591,14 @@ const handleApiError = (error: any, summary: string) => {
                   <Dropdown id="aiUsefulness" v-model="postAiFormData.aiUsefulness" :options="aiUsefulnessOptions" optionLabel="label" optionValue="value" placeholder="Select usefulness" required class="w-full" />
                 </div>
 
-                <Button type="submit" label="Submit Post-AI & Next Case" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
+                <Button 
+                  type="submit" 
+                  :label="submitting ? 'Submitting...' : 'Submit Assessment'" 
+                  icon="pi pi-medal" 
+                  iconPos="right" 
+                  :loading="submitting" 
+                  class="p-button-success"
+                />
               </div>
             </form>
           </div>
@@ -572,5 +634,10 @@ const handleApiError = (error: any, summary: string) => {
 }
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
   padding: 0.5rem 1rem;
+}
+.metadata-item {
+  padding: 0.5rem;
+  background-color: var(--surface-ground);
+  border-radius: 4px;
 }
 </style>

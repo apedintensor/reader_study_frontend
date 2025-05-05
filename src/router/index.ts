@@ -1,21 +1,18 @@
-import { createRouter, createWebHistory } from 'vue-router' // Keep other imports from vue-router
-import HomePage from '../pages/HomePage.vue'
-
-// Lazy load components using the recommended syntax
-const LoginPage = () => import('../pages/LoginPage.vue')
-const SignupPage = () => import('../pages/SignupPage.vue')
-const DashboardPage = () => import('../pages/DashboardPage.vue')
-const CasePage = () => import('../pages/CasePage.vue')
-const CompletionPage = () => import('../pages/CompletionPage.vue')
+import { createRouter, createWebHistory } from 'vue-router';
+import { useUserStore } from '../stores/userStore';
+import DashboardPage from '../pages/DashboardPage.vue';
+import LoginPage from '../pages/LoginPage.vue';
+import SignupPage from '../pages/SignupPage.vue';
+import CasePage from '../pages/CasePage.vue';
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomePage,
-      meta: { requiresAuth: true } // Add meta field
+      name: 'dashboard',
+      component: DashboardPage,
+      meta: { requiresAuth: true }
     },
     {
       path: '/login',
@@ -28,30 +25,23 @@ const router = createRouter({
       component: SignupPage
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: DashboardPage,
-      meta: { requiresAuth: true } // Add meta field
-    },
-    {
       path: '/case/:id',
       name: 'case',
       component: CasePage,
-      props: true, // Pass route params as props
-      meta: { requiresAuth: true } // Add meta field
-    },
-    {
-      path: '/complete',
-      name: 'complete',
-      component: CompletionPage,
-      meta: { requiresAuth: true } // Add meta field
-    },
-    // Fallback redirect (keep at the end)
-    {
-      path: '/:pathMatch(.*)*',
-      redirect: '/'
+      meta: { requiresAuth: true }
     }
   ]
-})
+});
 
-export default router
+// Navigation guard
+router.beforeEach((to, _from, next) => {
+  const userStore = useUserStore();
+  
+  if (to.meta.requiresAuth && !userStore.isAuthenticated) {
+    next({ name: 'login' });
+  } else {
+    next();
+  }
+});
+
+export default router;

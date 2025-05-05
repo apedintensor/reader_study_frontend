@@ -1,0 +1,9 @@
+1 after submitting a case, the state for the assessment form should clear, now it's preserved in between states.
+
+2 case metadata box should expand. and not displayed with bullet points
+
+3 the 1-5 slide bar should replaced by option box with number 12345
+
+4 delete HomePage.vue, the default route is DashBoardPage.vue, and if not logged in, send to log in page. 5
+
+5 rerrage the assessment page to minimize vertical scrolling, expand the page horizontally and reaarage item to use the same row when appropriate.

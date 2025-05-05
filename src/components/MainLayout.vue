@@ -27,7 +27,7 @@ const updateMenuItems = () => {
         label: 'Dashboard',
         icon: 'pi pi-fw pi-home',
         command: () => {
-          router.push('/dashboard'); // Navigate to dashboard
+          router.push('/'); // Navigate to dashboard
         }
       },
       // Add other authenticated navigation items here
