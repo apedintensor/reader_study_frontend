@@ -1,69 +1,112 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import apiClient from '../api'; // Import the API client
+import { ref, computed } from 'vue'; // Import computed
+import apiClient from '../api';
 
-// Define the structure of the user object based on UserRead schema and project needs
+// Define the structure based on UserRead schema
 interface User {
-  id: number | null;
-  email: string | null;
-  role_id: number | null; // Assuming role_id is needed, adjust if necessary
-  // Add other relevant fields from UserRead if needed
+  id: number; // Changed to number as per UserRead
+  email: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  is_verified: boolean;
+  role_id: number | null;
+  age_bracket: string | null;
+  gender: string | null;
+  years_experience: number | null;
+  years_derm_experience: number | null;
+  created_at: string;
 }
 
 export const useUserStore = defineStore('user', () => {
   // State
   const user = ref<User | null>(null);
-  const token = ref<string | null>(localStorage.getItem('authToken')); // Load token initially
+  // Use 'access_token' consistent with LoginPage and apiClient interceptor
+  const token = ref<string | null>(localStorage.getItem('access_token'));
 
   // Actions
-  function setUser(userData: User, authToken: string) {
-    user.value = userData;
-    token.value = authToken;
-    localStorage.setItem('userData', JSON.stringify(userData));
-    localStorage.setItem('authToken', authToken);
-    // Update apiClient default header after login
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+  function setToken(newToken: string) {
+    token.value = newToken;
+    localStorage.setItem('access_token', newToken);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   }
 
-  function logout() {
+  function clearAuth() {
     user.value = null;
     token.value = null;
     localStorage.removeItem('userData');
-    localStorage.removeItem('authToken');
-    // Remove Authorization header from apiClient
+    localStorage.removeItem('access_token');
     delete apiClient.defaults.headers.common['Authorization'];
-    // Optionally redirect to login page via router push
   }
 
-  function loadFromLocalStorage() {
-    const storedUser = localStorage.getItem('userData');
-    const storedToken = localStorage.getItem('authToken');
-
-    if (storedUser && storedToken) {
-      try {
-        user.value = JSON.parse(storedUser);
-        token.value = storedToken;
-        // Ensure apiClient has the token loaded on app start
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      } catch (e) {
-        console.error("Failed to parse user data from localStorage", e);
-        logout(); // Clear invalid data
+  async function fetchCurrentUser() {
+    if (!token.value) {
+      console.log("No token found, cannot fetch user.");
+      clearAuth(); // Ensure state is clean if token is missing
+      return false;
+    }
+    try {
+      // Use the /api/auth/users/me endpoint as per openapi.json
+      const response = await apiClient.get<User>('/api/auth/users/me');
+      user.value = response.data;
+      localStorage.setItem('userData', JSON.stringify(user.value));
+      console.log("Current user fetched:", user.value);
+      return true;
+    } catch (error: any) {
+      console.error('Failed to fetch current user:', error);
+      // If fetching user fails (e.g., invalid token), clear auth state
+      if (error.response && error.response.status === 401) {
+        clearAuth();
       }
-    } else {
-        // Ensure token is cleared if not found
-        token.value = null;
-        delete apiClient.defaults.headers.common['Authorization'];
+      return false;
     }
   }
 
-  // Initialize store from localStorage
+  function logout() {
+    clearAuth();
+    // Optionally add router.push('/login') here if router is accessible
+    console.log("User logged out.");
+  }
+
+  function loadFromLocalStorage() {
+    const storedToken = localStorage.getItem('access_token');
+    const storedUser = localStorage.getItem('userData');
+
+    if (storedToken) {
+      token.value = storedToken;
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      if (storedUser) {
+        try {
+          user.value = JSON.parse(storedUser);
+        } catch (e) {
+          console.error("Failed to parse user data from localStorage", e);
+          localStorage.removeItem('userData'); // Clear invalid data
+          user.value = null;
+          // Attempt to fetch user data again if token exists but user data is corrupt/missing
+          fetchCurrentUser();
+        }
+      } else {
+        // If token exists but no user data, try fetching it
+        fetchCurrentUser();
+      }
+    } else {
+      clearAuth(); // Ensure clean state if no token
+    }
+  }
+
+  // Computed property to check if user is authenticated
+  const isAuthenticated = computed(() => !!token.value && !!user.value);
+
+  // Initialize store from localStorage on creation
   loadFromLocalStorage();
 
   return {
     user,
     token,
-    setUser,
+    isAuthenticated, // Expose computed property
+    setToken,
     logout,
-    loadFromLocalStorage,
+    fetchCurrentUser,
+    loadFromLocalStorage, // Keep if external loading is needed
+    clearAuth, // Expose clearAuth
   };
 });

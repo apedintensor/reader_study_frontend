@@ -51,7 +51,7 @@ export const useCaseStore = defineStore('case', () => {
   async function loadCases() {
     try {
       // Fetch cases from the API - adjust limit as needed
-      const response = await apiClient.get<Case[]>('/cases/?limit=100'); // Assuming endpoint returns Case[]
+      const response = await apiClient.get<Case[]>('/api/cases/?limit=100'); // Updated endpoint to include /api prefix
       cases.value = response.data;
       console.log("Cases loaded:", cases.value);
       // Load progress after fetching cases

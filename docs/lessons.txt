@@ -1,3 +1,12 @@
+
+use Same-Origin Policy
+
+cypress error:
+renaming the config file to .cjs to explicitly mark it as a CommonJS file.
+rename cypress.config.js to cypress.config.cjs and try running the test again.
+
+
+
 Key Pitfalls to Avoid When Starting a Similar Vue 3 + Vite Project
 Based on our experience setting up your Reader Study Dashboard project with Vue 3, Vite, PrimeVue, and other dependencies, here are the important pitfalls to avoid and lessons learned:
 

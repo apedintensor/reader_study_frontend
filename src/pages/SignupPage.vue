@@ -32,7 +32,8 @@
             </div>
             <div class="p-field mb-4">
               <label for="role">Role</label>
-              <Dropdown id="role" v-model="formData.role_id" :options="roles" optionLabel="name" optionValue="id" placeholder="Select Role" required />
+              <!-- Use fetched roles -->
+              <Dropdown id="role" v-model="formData.role_id" :options="roles" optionLabel="name" optionValue="id" placeholder="Select Role" required :loading="rolesLoading" />
             </div>
             <Button type="submit" label="Sign Up" :loading="loading" />
           </div>
@@ -46,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue'; // Import onMounted
 import { useRouter } from 'vue-router';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -57,6 +58,12 @@ import Card from 'primevue/card';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import apiClient from '../api';
+
+// Define Role interface based on RoleRead schema
+interface Role {
+    id: number;
+    name: string;
+}
 
 const router = useRouter();
 const toast = useToast();
@@ -72,15 +79,26 @@ const formData = reactive({
 });
 
 const loading = ref(false);
+const rolesLoading = ref(false); // Loading state for roles dropdown
+const roles = ref<Role[]>([]); // To store fetched roles
 
-// Mock data for dropdowns
-const roles = ref([
-  { id: 1, name: "GP" },
-  { id: 2, name: "NP" },
-  { id: 3, name: "Dermatologist" }
-]);
+// Static data for other dropdowns
 const ageBrackets = ref(['18-29', '30-39', '40-49', '50-59', '60+']);
 const genders = ref(['Male', 'Female', 'Other', 'Prefer not to say']);
+
+// Fetch roles when the component mounts
+onMounted(async () => {
+  rolesLoading.value = true;
+  try {
+    const response = await apiClient.get<Role[]>('/roles/'); // Fetch roles from API
+    roles.value = response.data;
+  } catch (error) {
+    console.error("Failed to fetch roles:", error);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Could not load roles.', life: 3000 });
+  } finally {
+    rolesLoading.value = false;
+  }
+});
 
 const handleSignup = async () => {
   loading.value = true;
@@ -94,7 +112,8 @@ const handleSignup = async () => {
       is_verified: false, // Assuming verification is handled separately
     };
 
-    await apiClient.post('/auth/register/register', payload);
+    // Use the correct endpoint from openapi.json
+    await apiClient.post('/api/auth/register/register', payload);
 
     toast.add({ severity: 'success', summary: 'Signup Successful', detail: 'Please log in.', life: 3000 });
     router.push('/login');
@@ -104,11 +123,17 @@ const handleSignup = async () => {
     let detail = 'Signup failed. Please check your input.';
     if (error.response?.data?.detail) {
         if (typeof error.response.data.detail === 'string') {
-            detail = error.response.data.detail;
+            // Handle simple string errors like "REGISTER_USER_ALREADY_EXISTS"
+            detail = error.response.data.detail.replace(/_/g, ' ').toLowerCase();
+            detail = detail.charAt(0).toUpperCase() + detail.slice(1) + '.';
         } else if (Array.isArray(error.response.data.detail)) {
-            // Handle FastAPI validation errors
+            // Handle FastAPI validation errors (HTTP 422)
             detail = error.response.data.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('; ');
+        } else if (typeof error.response.data.detail === 'object' && error.response.data.detail.code === 'REGISTER_INVALID_PASSWORD') {
+             // Handle specific password error structure
+             detail = `Password validation failed: ${error.response.data.detail.reason}`;
         } else if (typeof error.response.data.detail === 'object') {
+             // Fallback for other object details
              detail = JSON.stringify(error.response.data.detail);
         }
     }

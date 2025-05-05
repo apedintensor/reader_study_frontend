@@ -95,6 +95,7 @@ const userId = computed(() => userStore.user?.id);
 const images = ref<ImageRead[]>([]);
 const metadata = ref<CaseMetaDataRead | null>(null);
 const managementStrategies = ref<ManagementStrategyRead[]>([]);
+const diagnosisTerms = ref<DiagnosisTermRead[]>([]);
 const aiOutputs = ref<AIOutputRead[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
@@ -107,9 +108,9 @@ const isPostAiPhase = ref(false);
 
 // --- Form Data ---
 const preAiFormData = reactive({
-  diagnosisRank1: '',
-  diagnosisRank2: '',
-  diagnosisRank3: '',
+  diagnosisRank1Id: null as number | null,
+  diagnosisRank2Id: null as number | null,
+  diagnosisRank3Id: null as number | null,
   confidenceScore: 3,
   managementStrategyId: null as number | null,
   managementNotes: '',
@@ -117,9 +118,9 @@ const preAiFormData = reactive({
 });
 
 const postAiFormData = reactive({
-  diagnosisRank1: '',
-  diagnosisRank2: '',
-  diagnosisRank3: '',
+  diagnosisRank1Id: null as number | null,
+  diagnosisRank2Id: null as number | null,
+  diagnosisRank3Id: null as number | null,
   confidenceScore: 3,
   managementStrategyId: null as number | null,
   managementNotes: '',
@@ -150,6 +151,7 @@ const fetchData = async () => {
   loading.value = true;
   isPostAiPhase.value = false;
   aiOutputs.value = [];
+  diagnosisTerms.value = [];
 
   try {
     const preAiDone = caseStore.completedCases.includes(caseId.value);
@@ -159,6 +161,7 @@ const fetchData = async () => {
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
       apiClient.get<CaseMetaDataRead>(`/api/case_metadata/case/${caseId.value}`),
       apiClient.get<ManagementStrategyRead[]>('/api/management_strategies/'),
+      apiClient.get<DiagnosisTermRead[]>('/api/diagnosis_terms/')
     ];
 
     if (isPostAiPhase.value) {
@@ -170,9 +173,10 @@ const fetchData = async () => {
     images.value = responses[0].data;
     metadata.value = responses[1].data;
     managementStrategies.value = responses[2].data;
+    diagnosisTerms.value = responses[3].data;
 
-    if (isPostAiPhase.value && responses.length > 3) {
-      aiOutputs.value = responses[3].data.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
+    if (isPostAiPhase.value && responses.length > 4) {
+      aiOutputs.value = responses[4].data.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
       loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
     } else {
       loadFromLocalStorage(preAiLocalStorageKey.value, preAiFormData);
@@ -219,8 +223,8 @@ const handlePreAiSubmit = async () => {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
     return;
   }
-  if (!preAiFormData.diagnosisRank1 || !preAiFormData.diagnosisRank2 || !preAiFormData.diagnosisRank3) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter all top 3 diagnoses.', life: 3000 });
+  if (preAiFormData.diagnosisRank1Id === null || preAiFormData.diagnosisRank2Id === null || preAiFormData.diagnosisRank3Id === null) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select all top 3 diagnoses.', life: 3000 });
     return;
   }
   if (preAiFormData.managementStrategyId === null) {
@@ -239,17 +243,23 @@ const handlePreAiSubmit = async () => {
       certainty_level: preAiFormData.certaintyScore,
     };
     const assessmentRes = await apiClient.post('/api/assessments/', assessmentPayload);
+    console.log('Assessment response:', assessmentRes.data);
     const assessmentId = assessmentRes.data.id;
 
     if (!assessmentId) throw new Error("Failed to get assessment ID from response.");
 
-    const diagnosesPayload: DiagnosisCreate[] = [
-      { assessment_id: assessmentId, diagnosis_id: 1, rank: 1 },
-      { assessment_id: assessmentId, diagnosis_id: 2, rank: 2 },
-      { assessment_id: assessmentId, diagnosis_id: 3, rank: 3 },
+    // Submit diagnoses one at a time
+    const diagnoses = [
+      { assessment_id: assessmentId, diagnosis_id: preAiFormData.diagnosisRank1Id!, rank: 1 },
+      { assessment_id: assessmentId, diagnosis_id: preAiFormData.diagnosisRank2Id!, rank: 2 },
+      { assessment_id: assessmentId, diagnosis_id: preAiFormData.diagnosisRank3Id!, rank: 3 }
     ];
-    await apiClient.post('/api/diagnoses/', diagnosesPayload);
 
+    for (const diagnosis of diagnoses) {
+      console.log('Submitting diagnosis:', diagnosis);
+      await apiClient.post('/api/diagnoses/', diagnosis);
+    }
+    
     const managementPlanPayload: ManagementPlanCreate = {
       assessment_id: assessmentId,
       strategy_id: preAiFormData.managementStrategyId!,
@@ -275,8 +285,8 @@ const handlePostAiSubmit = async () => {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
     return;
   }
-  if (!postAiFormData.diagnosisRank1 || !postAiFormData.diagnosisRank2 || !postAiFormData.diagnosisRank3) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter all top 3 updated diagnoses.', life: 3000 });
+  if (postAiFormData.diagnosisRank1Id === null || postAiFormData.diagnosisRank2Id === null || postAiFormData.diagnosisRank3Id === null) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select all top 3 updated diagnoses.', life: 3000 });
     return;
   }
   if (postAiFormData.managementStrategyId === null) {
@@ -306,12 +316,17 @@ const handlePostAiSubmit = async () => {
 
     if (!assessmentId) throw new Error("Failed to get assessment ID from response.");
 
-    const diagnosesPayload: DiagnosisCreate[] = [
-      { assessment_id: assessmentId, diagnosis_id: 4, rank: 1 },
-      { assessment_id: assessmentId, diagnosis_id: 5, rank: 2 },
-      { assessment_id: assessmentId, diagnosis_id: 6, rank: 3 },
+    // Submit diagnoses one at a time
+    const diagnoses = [
+      { assessment_id: assessmentId, diagnosis_id: postAiFormData.diagnosisRank1Id!, rank: 1 },
+      { assessment_id: assessmentId, diagnosis_id: postAiFormData.diagnosisRank2Id!, rank: 2 },
+      { assessment_id: assessmentId, diagnosis_id: postAiFormData.diagnosisRank3Id!, rank: 3 }
     ];
-    await apiClient.post('/api/diagnoses/', diagnosesPayload);
+
+    for (const diagnosis of diagnoses) {
+      console.log('Submitting post-AI diagnosis:', diagnosis);
+      await apiClient.post('/api/diagnoses/', diagnosis);
+    }
 
     const managementPlanPayload: ManagementPlanCreate = {
       assessment_id: assessmentId,
@@ -418,15 +433,15 @@ const handleApiError = (error: any, summary: string) => {
                 <h3 class="font-semibold text-lg mb-2">Your Assessment (Pre-AI)</h3>
                 <div class="field">
                   <label for="diag1">Top Diagnosis (Rank 1)</label>
-                  <InputText id="diag1" v-model="preAiFormData.diagnosisRank1" required />
+                  <Dropdown id="diag1" v-model="preAiFormData.diagnosisRank1Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 1" required filter class="w-full" />
                 </div>
                 <div class="field">
                   <label for="diag2">Second Diagnosis (Rank 2)</label>
-                  <InputText id="diag2" v-model="preAiFormData.diagnosisRank2" required />
+                  <Dropdown id="diag2" v-model="preAiFormData.diagnosisRank2Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 2" required filter class="w-full" />
                 </div>
                 <div class="field">
                   <label for="diag3">Third Diagnosis (Rank 3)</label>
-                  <InputText id="diag3" v-model="preAiFormData.diagnosisRank3" required />
+                  <Dropdown id="diag3" v-model="preAiFormData.diagnosisRank3Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 3" required filter class="w-full" />
                 </div>
 
                 <div class="field">
@@ -463,15 +478,15 @@ const handleApiError = (error: any, summary: string) => {
                 <h3 class="font-semibold text-lg mb-2">Your Updated Assessment (Post-AI)</h3>
                 <div class="field">
                   <label for="postDiag1">Updated Top Diagnosis (Rank 1)</label>
-                  <InputText id="postDiag1" v-model="postAiFormData.diagnosisRank1" required />
+                  <Dropdown id="postDiag1" v-model="postAiFormData.diagnosisRank1Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 1" required filter class="w-full" />
                 </div>
                 <div class="field">
                   <label for="postDiag2">Updated Second Diagnosis (Rank 2)</label>
-                  <InputText id="postDiag2" v-model="postAiFormData.diagnosisRank2" required />
+                  <Dropdown id="postDiag2" v-model="postAiFormData.diagnosisRank2Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 2" required filter class="w-full" />
                 </div>
                 <div class="field">
                   <label for="postDiag3">Updated Third Diagnosis (Rank 3)</label>
-                  <InputText id="postDiag3" v-model="postAiFormData.diagnosisRank3" required />
+                  <Dropdown id="postDiag3" v-model="postAiFormData.diagnosisRank3Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 3" required filter class="w-full" />
                 </div>
 
                 <div class="field">

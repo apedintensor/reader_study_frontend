@@ -1,13 +1,12 @@
-import { defineAsyncComponent } from 'vue' // Import defineAsyncComponent from vue
 import { createRouter, createWebHistory } from 'vue-router' // Keep other imports from vue-router
 import HomePage from '../pages/HomePage.vue'
 
-// Lazy load components
-const LoginPage = defineAsyncComponent(() => import('../pages/LoginPage.vue'))
-const SignupPage = defineAsyncComponent(() => import('../pages/SignupPage.vue'))
-const DashboardPage = defineAsyncComponent(() => import('../pages/DashboardPage.vue'))
-const CasePage = defineAsyncComponent(() => import('../pages/CasePage.vue'))
-const CompletionPage = defineAsyncComponent(() => import('../pages/CompletionPage.vue'))
+// Lazy load components using the recommended syntax
+const LoginPage = () => import('../pages/LoginPage.vue')
+const SignupPage = () => import('../pages/SignupPage.vue')
+const DashboardPage = () => import('../pages/DashboardPage.vue')
+const CasePage = () => import('../pages/CasePage.vue')
+const CompletionPage = () => import('../pages/CompletionPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
