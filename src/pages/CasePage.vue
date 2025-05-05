@@ -15,8 +15,12 @@ import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import SelectButton from 'primevue/selectbutton';
+import Divider from 'primevue/divider';
 
-// Interfaces based on OpenAPI schema
+// --- Interfaces ---
 interface ImageRead {
   id: number;
   image_url: string;
@@ -38,19 +42,36 @@ interface ManagementStrategyRead {
   name: string;
 }
 
+interface DiagnosisTermRead {
+  name: string;
+  id: number;
+}
+
+interface AIOutputRead {
+  rank: number | null;
+  confidence_score: number | null;
+  id: number;
+  case_id: number;
+  prediction_id: number;
+  prediction: DiagnosisTermRead;
+}
+
 interface AssessmentCreate {
   is_post_ai: boolean;
   user_id: number;
   case_id: number;
-  assessable_image_score?: number | null; // Optional for now
+  assessable_image_score?: number | null;
   confidence_level_top1?: number | null;
   management_confidence?: number | null;
   certainty_level?: number | null;
+  change_diagnosis_after_ai?: boolean | null;
+  change_management_after_ai?: boolean | null;
+  ai_usefulness?: string | null;
 }
 
 interface DiagnosisCreate {
   assessment_id: number;
-  diagnosis_id: number; // Mock ID for now
+  diagnosis_id: number;
   rank: number;
 }
 
@@ -70,171 +91,269 @@ const caseStore = useCaseStore();
 const caseId = computed(() => parseInt(route.params.id as string, 10));
 const userId = computed(() => userStore.user?.id);
 
+// --- State ---
 const images = ref<ImageRead[]>([]);
 const metadata = ref<CaseMetaDataRead | null>(null);
 const managementStrategies = ref<ManagementStrategyRead[]>([]);
+const aiOutputs = ref<AIOutputRead[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 
-const formData = reactive({
+// --- Phase Detection ---
+const isPreAiCompleteForCurrentCase = computed(() => {
+  return caseStore.completedCases.includes(caseId.value);
+});
+const isPostAiPhase = ref(false);
+
+// --- Form Data ---
+const preAiFormData = reactive({
   diagnosisRank1: '',
   diagnosisRank2: '',
   diagnosisRank3: '',
-  confidenceScore: 3, // Default mid-value
+  confidenceScore: 3,
   managementStrategyId: null as number | null,
   managementNotes: '',
-  certaintyScore: 3, // Default mid-value
+  certaintyScore: 3,
 });
 
-const localStorageKey = computed(() => `preAiFormData_${caseId.value}`);
+const postAiFormData = reactive({
+  diagnosisRank1: '',
+  diagnosisRank2: '',
+  diagnosisRank3: '',
+  confidenceScore: 3,
+  managementStrategyId: null as number | null,
+  managementNotes: '',
+  certaintyScore: 3,
+  changeDiagnosis: null as boolean | null,
+  changeManagement: null as boolean | null,
+  aiUsefulness: null as string | null,
+});
+
+const preAiLocalStorageKey = computed(() => `preAiFormData_${caseId.value}`);
+const postAiLocalStorageKey = computed(() => `postAiFormData_${caseId.value}`);
+
+// --- AI Usefulness Options ---
+const aiUsefulnessOptions = ref([
+  { label: 'Very Useful', value: 'very' },
+  { label: 'Somewhat Useful', value: 'somewhat' },
+  { label: 'Not Useful', value: 'not' },
+]);
+
+const changeOptions = ref([
+  { label: 'Yes', value: true },
+  { label: 'No', value: false },
+]);
 
 // --- Data Fetching ---
 const fetchData = async () => {
   if (!caseId.value) return;
   loading.value = true;
+  isPostAiPhase.value = false;
+  aiOutputs.value = [];
+
   try {
-    // Fetch images, metadata, and strategies in parallel
-    const [imagesRes, metadataRes, strategiesRes] = await Promise.all([
+    const preAiDone = caseStore.completedCases.includes(caseId.value);
+    isPostAiPhase.value = preAiDone;
+
+    const commonFetches = [
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
       apiClient.get<CaseMetaDataRead>(`/api/case_metadata/case/${caseId.value}`),
       apiClient.get<ManagementStrategyRead[]>('/api/management_strategies/'),
-    ]);
+    ];
 
-    images.value = imagesRes.data;
-    metadata.value = metadataRes.data;
-    managementStrategies.value = strategiesRes.data;
+    if (isPostAiPhase.value) {
+      commonFetches.push(apiClient.get<AIOutputRead[]>(`/api/ai_outputs/case/${caseId.value}`));
+    }
 
-    // Load saved form data after fetching is complete
-    loadFromLocalStorage();
+    const responses = await Promise.all(commonFetches);
 
+    images.value = responses[0].data;
+    metadata.value = responses[1].data;
+    managementStrategies.value = responses[2].data;
+
+    if (isPostAiPhase.value && responses.length > 3) {
+      aiOutputs.value = responses[3].data.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
+      loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+    } else {
+      loadFromLocalStorage(preAiLocalStorageKey.value, preAiFormData);
+    }
   } catch (error: any) {
     console.error('Failed to fetch case data:', error);
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load case data. Please try again.', life: 3000 });
-    // Optionally redirect or show an error message
   } finally {
     loading.value = false;
   }
 };
 
 // --- Local Storage ---
-const saveToLocalStorage = () => {
-  localStorage.setItem(localStorageKey.value, JSON.stringify(formData));
+const saveToLocalStorage = (key: string, data: object) => {
+  localStorage.setItem(key, JSON.stringify(data));
 };
 
-const loadFromLocalStorage = () => {
-  const savedData = localStorage.getItem(localStorageKey.value);
+const loadFromLocalStorage = (key: string, target: object) => {
+  const savedData = localStorage.getItem(key);
   if (savedData) {
     try {
       const parsedData = JSON.parse(savedData);
-      Object.assign(formData, parsedData);
-      console.log('Loaded pre-AI form data from localStorage for case:', caseId.value);
+      Object.assign(target, parsedData);
     } catch (e) {
-      console.error('Failed to parse saved form data:', e);
-      localStorage.removeItem(localStorageKey.value); // Clear invalid data
+      console.error(`Failed to parse saved form data for key ${key}:`, e);
+      localStorage.removeItem(key);
     }
   }
 };
 
-const clearLocalStorage = () => {
-  localStorage.removeItem(localStorageKey.value);
+const clearLocalStorage = (key: string) => {
+  localStorage.removeItem(key);
 };
 
-// Watch form data and save to localStorage
-watch(formData, saveToLocalStorage, { deep: true });
+watch(preAiFormData, () => saveToLocalStorage(preAiLocalStorageKey.value, preAiFormData), { deep: true });
+watch(postAiFormData, () => saveToLocalStorage(postAiLocalStorageKey.value, postAiFormData), { deep: true });
 
-// Fetch data on component mount
 onMounted(fetchData);
-
-// Re-fetch data if the case ID changes
 watch(caseId, fetchData);
 
-
 // --- Submission Logic ---
-const handleNext = async () => {
+const handlePreAiSubmit = async () => {
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
     return;
   }
-
-  // Basic Validation (PrimeVue required prop handles some)
-  if (!formData.diagnosisRank1 || !formData.diagnosisRank2 || !formData.diagnosisRank3) {
-      toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter all top 3 diagnoses.', life: 3000 });
-      return;
+  if (!preAiFormData.diagnosisRank1 || !preAiFormData.diagnosisRank2 || !preAiFormData.diagnosisRank3) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter all top 3 diagnoses.', life: 3000 });
+    return;
   }
-   if (formData.managementStrategyId === null) {
-      toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select a management strategy.', life: 3000 });
-      return;
+  if (preAiFormData.managementStrategyId === null) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select a management strategy.', life: 3000 });
+    return;
   }
 
   submitting.value = true;
   try {
-    // 1. Submit Assessment
     const assessmentPayload: AssessmentCreate = {
       is_post_ai: false,
       user_id: userId.value,
       case_id: caseId.value,
-      confidence_level_top1: formData.confidenceScore,
-      management_confidence: formData.confidenceScore, // As per requirement
-      certainty_level: formData.certaintyScore,
-      // assessable_image_score: null, // Optional, can add later
+      confidence_level_top1: preAiFormData.confidenceScore,
+      management_confidence: preAiFormData.confidenceScore,
+      certainty_level: preAiFormData.certaintyScore,
     };
     const assessmentRes = await apiClient.post('/api/assessments/', assessmentPayload);
     const assessmentId = assessmentRes.data.id;
 
-    if (!assessmentId) {
-        throw new Error("Failed to get assessment ID from response.");
-    }
+    if (!assessmentId) throw new Error("Failed to get assessment ID from response.");
 
-    // 2. Submit Diagnoses (using mock IDs as requested)
     const diagnosesPayload: DiagnosisCreate[] = [
-      // Using mock diagnosis_id 1, 2, 3 until lookup is implemented
       { assessment_id: assessmentId, diagnosis_id: 1, rank: 1 },
       { assessment_id: assessmentId, diagnosis_id: 2, rank: 2 },
       { assessment_id: assessmentId, diagnosis_id: 3, rank: 3 },
     ];
-    // Note: The actual text from formData.diagnosisRank1 etc. is NOT sent here
-    // due to API expecting integer diagnosis_id.
-    await apiClient.post('/api/diagnoses/', diagnosesPayload); // Assuming endpoint accepts a list
+    await apiClient.post('/api/diagnoses/', diagnosesPayload);
 
-    // 3. Submit Management Plan
     const managementPlanPayload: ManagementPlanCreate = {
       assessment_id: assessmentId,
-      strategy_id: formData.managementStrategyId,
-      free_text: formData.managementNotes || null,
+      strategy_id: preAiFormData.managementStrategyId!,
+      free_text: preAiFormData.managementNotes || null,
     };
     await apiClient.post('/api/management_plans/', managementPlanPayload);
 
-    // 4. Update Store and Navigate
-    caseStore.markCaseComplete(caseId.value); // Mark as complete (might need refinement for pre/post)
-    clearLocalStorage(); // Clear saved data on successful submission
+    caseStore.markCaseComplete(caseId.value);
+    clearLocalStorage(preAiLocalStorageKey.value);
     toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved.', life: 2000 });
 
-    // Navigate to next case
-    caseStore.goToNextCase();
-    const nextCase = caseStore.getCurrentCase;
-    if (nextCase) {
-      router.push(`/case/${nextCase.id}`);
-    } else {
-      router.push('/complete'); // Or dashboard if preferred
-    }
-
+    await fetchData();
   } catch (error: any) {
-    console.error('Failed to submit assessment:', error);
-    let detail = 'Failed to submit assessment. Please try again.';
-     if (error.response?.data?.detail) {
-        if (typeof error.response.data.detail === 'string') {
-            detail = error.response.data.detail;
-        } else if (Array.isArray(error.response.data.detail)) {
-            detail = error.response.data.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('; ');
-        }
-    }
-    toast.add({ severity: 'error', summary: 'Submission Error', detail: detail, life: 5000 });
+    console.error('Failed to submit pre-AI assessment:', error);
+    handleApiError(error, 'Pre-AI Submission Error');
   } finally {
     submitting.value = false;
   }
 };
 
-// --- Template ---
+const handlePostAiSubmit = async () => {
+  if (!userId.value || !caseId.value) {
+    toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
+    return;
+  }
+  if (!postAiFormData.diagnosisRank1 || !postAiFormData.diagnosisRank2 || !postAiFormData.diagnosisRank3) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter all top 3 updated diagnoses.', life: 3000 });
+    return;
+  }
+  if (postAiFormData.managementStrategyId === null) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select an updated management strategy.', life: 3000 });
+    return;
+  }
+  if (postAiFormData.changeDiagnosis === null || postAiFormData.changeManagement === null || postAiFormData.aiUsefulness === null) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please answer the questions about AI impact.', life: 3000 });
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const assessmentPayload: AssessmentCreate = {
+      is_post_ai: true,
+      user_id: userId.value,
+      case_id: caseId.value,
+      confidence_level_top1: postAiFormData.confidenceScore,
+      management_confidence: postAiFormData.confidenceScore,
+      certainty_level: postAiFormData.certaintyScore,
+      change_diagnosis_after_ai: postAiFormData.changeDiagnosis,
+      change_management_after_ai: postAiFormData.changeManagement,
+      ai_usefulness: postAiFormData.aiUsefulness,
+    };
+    const assessmentRes = await apiClient.post('/api/assessments/', assessmentPayload);
+    const assessmentId = assessmentRes.data.id;
+
+    if (!assessmentId) throw new Error("Failed to get assessment ID from response.");
+
+    const diagnosesPayload: DiagnosisCreate[] = [
+      { assessment_id: assessmentId, diagnosis_id: 4, rank: 1 },
+      { assessment_id: assessmentId, diagnosis_id: 5, rank: 2 },
+      { assessment_id: assessmentId, diagnosis_id: 6, rank: 3 },
+    ];
+    await apiClient.post('/api/diagnoses/', diagnosesPayload);
+
+    const managementPlanPayload: ManagementPlanCreate = {
+      assessment_id: assessmentId,
+      strategy_id: postAiFormData.managementStrategyId!,
+      free_text: postAiFormData.managementNotes || null,
+    };
+    await apiClient.post('/api/management_plans/', managementPlanPayload);
+
+    caseStore.markCaseComplete(caseId.value);
+    clearLocalStorage(postAiLocalStorageKey.value);
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Post-AI assessment saved.', life: 2000 });
+
+    caseStore.goToNextCase();
+    const nextCase = caseStore.getCurrentCase;
+    if (nextCase) {
+      router.push(`/case/${nextCase.id}`);
+    } else {
+      router.push('/complete');
+    }
+  } catch (error: any) {
+    console.error('Failed to submit post-AI assessment:', error);
+    handleApiError(error, 'Post-AI Submission Error');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const handleApiError = (error: any, summary: string) => {
+  let detail = 'An unexpected error occurred. Please try again.';
+  if (error.response?.data?.detail) {
+    if (typeof error.response.data.detail === 'string') {
+      detail = error.response.data.detail;
+    } else if (Array.isArray(error.response.data.detail)) {
+      detail = error.response.data.detail.map((err: any) => `${err.loc?.join('.')} - ${err.msg}`).join('; ');
+    } else if (typeof error.response.data.detail === 'object') {
+      detail = JSON.stringify(error.response.data.detail);
+    }
+  } else if (error.message) {
+    detail = error.message;
+  }
+  toast.add({ severity: 'error', summary: summary, detail: detail, life: 5000 });
+};
 </script>
 
 <template>
@@ -242,29 +361,26 @@ const handleNext = async () => {
     <Toast />
     <Card>
       <template #title>
-        Case Assessment (Pre-AI) - ID: {{ caseId }}
+        Case Assessment - ID: {{ caseId }} ({{ isPostAiPhase ? 'Post-AI' : 'Pre-AI' }})
       </template>
       <template #content>
         <div v-if="loading" class="text-center">
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i> Loading Case Data...
         </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Left Column: Images and Metadata -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <!-- Images Carousel -->
             <Carousel :value="images" :numVisible="1" :numScroll="1" v-if="images.length > 0" class="mb-4">
               <template #item="slotProps">
                 <div class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4 text-center">
-                  <img :src="slotProps.data.image_url" :alt="'Case Image ' + slotProps.data.id" class="w-full block rounded" />
+                  <img :src="slotProps.data.image_url" :alt="'Case Image ' + slotProps.data.id" class="w-full block rounded max-h-[60vh] object-contain" />
                 </div>
               </template>
             </Carousel>
-             <div v-else class="text-center p-4 border border-surface-200 dark:border-surface-700 rounded mb-4">
-                No images available for this case.
+            <div v-else class="text-center p-4 border border-surface-200 dark:border-surface-700 rounded mb-4">
+              No images available for this case.
             </div>
 
-            <!-- Metadata Panel -->
-            <Panel header="Case Metadata" toggleable collapsed v-if="metadata">
+            <Panel header="Case Metadata" toggleable collapsed v-if="metadata" class="mb-4">
               <ul class="list-none p-0 m-0">
                 <li v-if="metadata.age !== null && metadata.age !== undefined"><strong>Age:</strong> {{ metadata.age }}</li>
                 <li v-if="metadata.gender"><strong>Gender:</strong> {{ metadata.gender }}</li>
@@ -272,63 +388,134 @@ const handleNext = async () => {
                 <li v-if="metadata.psoriasis_history !== null && metadata.psoriasis_history !== undefined"><strong>Psoriasis History:</strong> {{ metadata.psoriasis_history ? 'Yes' : 'No' }}</li>
                 <li v-if="metadata.other_notes"><strong>Other Notes:</strong> {{ metadata.other_notes }}</li>
               </ul>
-               <p v-if="!metadata.age && !metadata.gender && metadata.fever_history === null && metadata.psoriasis_history === null && !metadata.other_notes">
-                   No metadata available.
-               </p>
+              <p v-if="!metadata.age && !metadata.gender && metadata.fever_history === null && metadata.psoriasis_history === null && !metadata.other_notes">
+                No metadata available.
+              </p>
             </Panel>
-             <Panel header="Case Metadata" v-else>
-                 <p>Loading metadata...</p>
-             </Panel>
+            <Panel header="Case Metadata" v-else class="mb-4">
+              <p>Loading metadata...</p>
+            </Panel>
+
+            <Panel header="AI Predictions (Top 5)" v-if="isPostAiPhase" class="mb-4">
+              <div v-if="aiOutputs.length > 0">
+                <DataTable :value="aiOutputs" size="small">
+                  <Column field="rank" header="Rank"></Column>
+                  <Column field="prediction.name" header="Diagnosis"></Column>
+                  <Column field="confidence_score" header="Confidence">
+                    <template #body="slotProps">
+                      {{ slotProps.data.confidence_score !== null ? (slotProps.data.confidence_score * 100).toFixed(1) + '%' : 'N/A' }}
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+              <p v-else>No AI predictions available for this case.</p>
+            </Panel>
           </div>
 
-          <!-- Right Column: Form -->
           <div>
-            <form @submit.prevent="handleNext">
+            <form v-if="!isPostAiPhase" @submit.prevent="handlePreAiSubmit">
               <div class="p-fluid space-y-4">
-                <!-- Top 3 Diagnoses -->
+                <h3 class="font-semibold text-lg mb-2">Your Assessment (Pre-AI)</h3>
                 <div class="field">
                   <label for="diag1">Top Diagnosis (Rank 1)</label>
-                  <InputText id="diag1" v-model="formData.diagnosisRank1" required />
+                  <InputText id="diag1" v-model="preAiFormData.diagnosisRank1" required />
                 </div>
                 <div class="field">
                   <label for="diag2">Second Diagnosis (Rank 2)</label>
-                  <InputText id="diag2" v-model="formData.diagnosisRank2" required />
+                  <InputText id="diag2" v-model="preAiFormData.diagnosisRank2" required />
                 </div>
                 <div class="field">
                   <label for="diag3">Third Diagnosis (Rank 3)</label>
-                  <InputText id="diag3" v-model="formData.diagnosisRank3" required />
+                  <InputText id="diag3" v-model="preAiFormData.diagnosisRank3" required />
                 </div>
 
-                <!-- Confidence Score -->
                 <div class="field">
                   <label for="confidence">Confidence in Top Diagnosis (1=Low, 5=High)</label>
                   <div class="flex items-center">
-                     <Slider id="confidence" v-model="formData.confidenceScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                     <span>{{ formData.confidenceScore }}</span>
+                    <Slider id="confidence" v-model="preAiFormData.confidenceScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
+                    <span>{{ preAiFormData.confidenceScore }}</span>
                   </div>
                 </div>
 
-                <!-- Management Strategy -->
                 <div class="field">
                   <label for="management">Management Strategy</label>
-                  <Dropdown id="management" v-model="formData.managementStrategyId" :options="managementStrategies" optionLabel="name" optionValue="id" placeholder="Select a strategy" required class="w-full" />
+                  <Dropdown id="management" v-model="preAiFormData.managementStrategyId" :options="managementStrategies" optionLabel="name" optionValue="id" placeholder="Select a strategy" required class="w-full" />
                 </div>
                 <div class="field">
                   <label for="managementNotes">Management Notes (Optional)</label>
-                  <Textarea id="managementNotes" v-model="formData.managementNotes" rows="3" class="w-full" />
+                  <Textarea id="managementNotes" v-model="preAiFormData.managementNotes" rows="3" class="w-full" />
                 </div>
 
-                <!-- Certainty Score -->
-                 <div class="field">
+                <div class="field">
                   <label for="certainty">Certainty of Management Plan (1=Low, 5=High)</label>
-                   <div class="flex items-center">
-                     <Slider id="certainty" v-model="formData.certaintyScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
-                     <span>{{ formData.certaintyScore }}</span>
-                   </div>
+                  <div class="flex items-center">
+                    <Slider id="certainty" v-model="preAiFormData.certaintyScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
+                    <span>{{ preAiFormData.certaintyScore }}</span>
+                  </div>
                 </div>
 
-                <!-- Submit Button -->
-                <Button type="submit" label="Next" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
+                <Button type="submit" label="Submit Pre-AI & View AI" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
+              </div>
+            </form>
+
+            <form v-else @submit.prevent="handlePostAiSubmit">
+              <div class="p-fluid space-y-4">
+                <h3 class="font-semibold text-lg mb-2">Your Updated Assessment (Post-AI)</h3>
+                <div class="field">
+                  <label for="postDiag1">Updated Top Diagnosis (Rank 1)</label>
+                  <InputText id="postDiag1" v-model="postAiFormData.diagnosisRank1" required />
+                </div>
+                <div class="field">
+                  <label for="postDiag2">Updated Second Diagnosis (Rank 2)</label>
+                  <InputText id="postDiag2" v-model="postAiFormData.diagnosisRank2" required />
+                </div>
+                <div class="field">
+                  <label for="postDiag3">Updated Third Diagnosis (Rank 3)</label>
+                  <InputText id="postDiag3" v-model="postAiFormData.diagnosisRank3" required />
+                </div>
+
+                <div class="field">
+                  <label for="postConfidence">Updated Confidence in Top Diagnosis (1=Low, 5=High)</label>
+                  <div class="flex items-center">
+                    <Slider id="postConfidence" v-model="postAiFormData.confidenceScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
+                    <span>{{ postAiFormData.confidenceScore }}</span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="postManagement">Updated Management Strategy</label>
+                  <Dropdown id="postManagement" v-model="postAiFormData.managementStrategyId" :options="managementStrategies" optionLabel="name" optionValue="id" placeholder="Select updated strategy" required class="w-full" />
+                </div>
+                <div class="field">
+                  <label for="postManagementNotes">Updated Management Notes (Optional)</label>
+                  <Textarea id="postManagementNotes" v-model="postAiFormData.managementNotes" rows="3" class="w-full" />
+                </div>
+
+                <div class="field">
+                  <label for="postCertainty">Updated Certainty of Management Plan (1=Low, 5=High)</label>
+                  <div class="flex items-center">
+                    <Slider id="postCertainty" v-model="postAiFormData.certaintyScore" :min="1" :max="5" :step="1" class="w-full mr-4" />
+                    <span>{{ postAiFormData.certaintyScore }}</span>
+                  </div>
+                </div>
+
+                <Divider />
+
+                <h4 class="font-semibold text-md mb-2">AI Impact Assessment</h4>
+                <div class="field">
+                  <label>Did the AI suggestions change your primary diagnosis?</label>
+                  <SelectButton v-model="postAiFormData.changeDiagnosis" :options="changeOptions" optionLabel="label" optionValue="value" required />
+                </div>
+                <div class="field">
+                  <label>Did the AI suggestions change your management plan?</label>
+                  <SelectButton v-model="postAiFormData.changeManagement" :options="changeOptions" optionLabel="label" optionValue="value" required />
+                </div>
+                <div class="field">
+                  <label for="aiUsefulness">How useful were the AI suggestions?</label>
+                  <Dropdown id="aiUsefulness" v-model="postAiFormData.aiUsefulness" :options="aiUsefulnessOptions" optionLabel="label" optionValue="value" placeholder="Select usefulness" required class="w-full" />
+                </div>
+
+                <Button type="submit" label="Submit Post-AI & Next Case" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
               </div>
             </form>
           </div>
@@ -340,19 +527,29 @@ const handleNext = async () => {
 
 <style scoped>
 .case-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: auto;
 }
-/* Add Tailwind classes or custom styles if needed */
 .field label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
 }
-
-/* Ensure sliders have some vertical space */
 .p-slider {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+:deep(.p-selectbutton .p-button) {
+  margin-right: 0.5rem;
+}
+:deep(.p-selectbutton .p-button:last-child) {
+  margin-right: 0;
+}
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background-color: var(--p-surface-100);
+  font-weight: bold;
+}
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  padding: 0.5rem 1rem;
 }
 </style>
