@@ -20,9 +20,6 @@ Adjust heading sizes and weights to establish clear hierarchy.
 
 Example:
 
-vue
-Copy
-Edit
   <Card>
     <template #title>Section Title</template>
     <template #content>

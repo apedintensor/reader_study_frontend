@@ -1,72 +1,79 @@
 <template>
-  <div class="login-container p-4">
-    <Toast />
-    <Card>
-      <template #title>
-        <span class="text-xl font-bold flex align-items-center">
-          <i class="pi pi-sign-in mr-2"></i> Login
-        </span>
-      </template>
-      <template #subtitle>
-        <span class="text-sm text-600">Please enter your credentials to continue</span>
-      </template>
-      <template #content>
-        <form @submit.prevent="handleLogin" class="p-fluid">
-          <div class="field mb-4">
-            <label for="email" class="font-medium block mb-2">Email</label>
-            <span class="p-input-icon 100">
-              <i class="pi pi-envelope"></i>
-              <InputText 
-                id="email" 
-                type="email" 
-                v-model="formData.email" 
-                :class="{'p-invalid': submitted && !formData.email}"
-                required
-                placeholder="Enter your email"
-              />
-            </span>
+  <div class="flex align-items-center justify-content-center min-h-screen bg-surface-50 px-4 py-8">
+    <div class="login-container">
+      <Toast />
+      <Card class="shadow-2">
+        <template #title>
+          <div class="text-center mb-5">
+            <div class="text-900 text-3xl font-medium mb-3">Welcome Back</div>
+            <span class="text-600 font-medium line-height-3">Sign in to continue to the Reader Study</span>
           </div>
+        </template>
+        <template #content>
+          <form @submit.prevent="handleLogin" class="p-fluid">
+            <!-- Email -->
+            <div class="field mb-4">
+              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+                <i class="pi pi-envelope text-500" />
+                <InputText
+                  v-model="formData.email"
+                  placeholder="Email"
+                  class="w-full border-none shadow-none"
+                  :class="{ 'p-invalid': submitted && !formData.email }"
+                  aria-label="Email"
+                  required
+                />
+              </div>
+              <small v-if="submitted && !formData.email" class="p-error">Email is required</small>
+            </div>
 
-          <div class="field mb-4">
-            <label for="password" class="font-medium block mb-2">Password</label>
-            <span class="p-input-icon 100">
-              <i class="pi pi-lock"></i>
-              <Password 
-                id="password" 
-                v-model="formData.password" 
-                :class="{'p-invalid': submitted && !formData.password}"
-                :toggleMask="true"
-                required
-                placeholder="Enter your password"
-              />
-            </span>
-          </div>
+            <!-- Password -->
+            <div class="field mb-4">
+              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+                <i class="pi pi-lock text-500" />
+                <Password
+                  v-model="formData.password"
+                  placeholder="Password"
+                  :toggleMask="true"
+                  :feedback="false"
+                  class="w-full border-none shadow-none"
+                  :class="{ 'p-invalid': submitted && !formData.password }"
+                  aria-label="Password"
+                  required
+                />
+              </div>
+              <small v-if="submitted && !formData.password" class="p-error">Password is required</small>
+            </div>
 
-          <Button 
-            type="submit" 
-            :label="loading ? 'Logging in...' : 'Login'" 
-            :loading="loading" 
-            severity="primary"
-            class="mb-4"
-          />
+            <Button 
+              type="submit" 
+              :label="loading ? 'Signing in...' : 'Sign in'" 
+              :icon="loading ? 'pi pi-spinner pi-spin' : 'pi pi-sign-in'"
+              :loading="loading" 
+              severity="primary"
+              class="mb-4 p-3"
+              :disabled="loading"
+            />
 
-          <Divider />
-
-          <div class="text-center">
-            <p class="text-600 mb-2">Don't have an account?</p>
-            <router-link to="/signup" class="no-underline">
-              <Button 
-                type="button" 
-                label="Sign Up" 
-                severity="secondary" 
-                outlined
-                class="w-full"
-              />
-            </router-link>
-          </div>
-        </form>
-      </template>
-    </Card>
+            <div class="text-center">
+              <Divider align="center">
+                <span class="text-600 font-medium">New here?</span>
+              </Divider>
+              <router-link to="/signup" class="no-underline">
+                <Button 
+                  type="button" 
+                  label="Create an account" 
+                  icon="pi pi-user-plus"
+                  severity="secondary" 
+                  outlined
+                  class="w-full p-3"
+                />
+              </router-link>
+            </div>
+          </form>
+        </template>
+      </Card>
+    </div>
   </div>
 </template>
 
@@ -137,16 +144,27 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-container {
+  width: 100%;
   max-width: 450px;
-  margin: 2rem auto;
 }
 
-:deep(.p-password-input) {
+:deep(.p-password),
+:deep(.p-password-input),
+:deep(.p-inputtext) {
   width: 100%;
 }
 
 :deep(.p-card) {
-  background: var(--surface-card);
   border-radius: var(--border-radius);
+}
+
+:deep(.p-input-icon-left) {
+  width: 100%;
+}
+
+@media screen and (max-width: 576px) {
+  .login-container {
+    max-width: 100%;
+  }
 }
 </style>

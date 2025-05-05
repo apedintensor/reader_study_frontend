@@ -1,97 +1,128 @@
 <template>
-  <div class="dashboard-container p-4">
+  <div class="dashboard-container">
     <Toast />
     
     <!-- Progress Overview -->
-    <Card class="mb-4">
-      <template #title>
-        <span class="text-xl font-bold flex align-items-center">
-          <i class="pi pi-chart-bar mr-2"></i> Study Progress
-        </span>
-      </template>
-      <template #content>
-        <div class="grid">
-          <!-- Stats Cards -->
-          <div class="col-12 md:col-4">
-            <div class="surface-card border-round p-4 h-full">
-              <div class="text-600 mb-2">Total Cases</div>
-              <div class="text-primary text-4xl font-bold mb-2">{{ cases.length }}</div>
-              <div class="text-sm text-700">All available cases</div>
+    <div class="grid">
+      <!-- Stats Summary -->
+      <div class="col-12">
+        <Card class="mb-4">
+          <template #title>
+            <div class="flex align-items-center">
+              <i class="pi pi-chart-bar text-xl mr-2"></i>
+              <span class="text-xl font-medium">Study Progress</span>
             </div>
-          </div>
-          
-          <div class="col-12 md:col-4">
-            <div class="surface-card border-round p-4 h-full">
-              <div class="text-600 mb-2">Completed</div>
-              <div class="text-green-500 text-4xl font-bold mb-2">{{ completedCases.length }}</div>
-              <div class="text-sm text-700">Successfully assessed cases</div>
-            </div>
-          </div>
-          
-          <div class="col-12 md:col-4">
-            <div class="surface-card border-round p-4 h-full">
-              <div class="text-600 mb-2">Remaining</div>
-              <div class="text-orange-500 text-4xl font-bold mb-2">{{ cases.length - completedCases.length }}</div>
-              <div class="text-sm text-700">Cases pending assessment</div>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="col-12 mt-4">
-            <div class="surface-card border-round p-4">
-              <div class="flex justify-content-between align-items-center mb-3">
-                <span class="text-600">Overall Completion</span>
-                <Tag :value="Math.round(completionPercentage) + '%'" 
-                     :severity="completionPercentage === 100 ? 'success' : 'info'" />
+          </template>
+          <template #content>
+            <div class="grid">
+              <div class="col-12 md:col-4">
+                <div class="surface-card shadow-1 border-round p-4 h-full">
+                  <i class="pi pi-list text-xl text-primary mb-3"></i>
+                  <div class="text-500 font-medium">Total Cases</div>
+                  <div class="text-900 text-4xl font-bold mt-2">{{ cases.length }}</div>
+                  <div class="text-600 mt-2">All available cases</div>
+                </div>
               </div>
-              <ProgressBar :value="completionPercentage" class="h-2rem" />
-            </div>
-          </div>
-        </div>
-      </template>
-    </Card>
+              
+              <div class="col-12 md:col-4">
+                <div class="surface-card shadow-1 border-round p-4 h-full">
+                  <i class="pi pi-check-circle text-xl text-green-500 mb-3"></i>
+                  <div class="text-500 font-medium">Completed</div>
+                  <div class="text-900 text-4xl font-bold mt-2">{{ completedCases.length }}</div>
+                  <div class="text-600 mt-2">Successfully assessed cases</div>
+                </div>
+              </div>
+              
+              <div class="col-12 md:col-4">
+                <div class="surface-card shadow-1 border-round p-4 h-full">
+                  <i class="pi pi-clock text-xl text-orange-500 mb-3"></i>
+                  <div class="text-500 font-medium">Remaining</div>
+                  <div class="text-900 text-4xl font-bold mt-2">{{ cases.length - completedCases.length }}</div>
+                  <div class="text-600 mt-2">Cases pending assessment</div>
+                </div>
+              </div>
 
-    <!-- Cases List -->
-    <Card>
-      <template #title>
-        <span class="text-xl font-bold flex align-items-center">
-          <i class="pi pi-list mr-2"></i> Available Cases
-        </span>
-      </template>
-      <template #content>
-        <DataTable :value="cases" 
-                  :loading="loading" 
-                  dataKey="id"
-                  stripedRows
-                  class="p-datatable-sm"
-                  responsiveLayout="scroll"
-                  :rowClass="(data) => ({'cursor-pointer': true})">
-          <Column field="id" header="Case ID" style="width: 15%">
-            <template #body="slotProps">
-              <span class="font-semibold">#{{ slotProps.data.id }}</span>
-            </template>
-          </Column>
-          
-          <Column header="Status" style="width: 25%">
-            <template #body="slotProps">
-              <Tag :value="getStatusLabel(slotProps.data)" 
-                   :severity="getStatusSeverity(slotProps.data)"
-                   :icon="getStatusIcon(slotProps.data)" />
-            </template>
-          </Column>
-          
-          <Column style="width: 20%">
-            <template #body="slotProps">
-              <Button :icon="getStatusIcon(slotProps.data)"
-                     :label="getActionLabel(slotProps.data)"
-                     :severity="getStatusSeverity(slotProps.data)"
-                     size="small"
-                     @click="navigateToCase(slotProps.data)" />
-            </template>
-          </Column>
-        </DataTable>
-      </template>
-    </Card>
+              <!-- Progress Bar -->
+              <div class="col-12 mt-4">
+                <div class="surface-card shadow-1 border-round p-4">
+                  <div class="flex justify-content-between align-items-center mb-3">
+                    <div class="flex align-items-center">
+                      <i class="pi pi-chart-line text-primary mr-2"></i>
+                      <span class="text-900 font-medium">Overall Progress</span>
+                    </div>
+                    <Tag :value="Math.round(completionPercentage) + '%'" 
+                         :severity="completionPercentage === 100 ? 'success' : 'info'"
+                         :icon="completionPercentage === 100 ? 'pi pi-check' : 'pi pi-chart-line'" />
+                  </div>
+                  <ProgressBar :value="completionPercentage" class="h-1rem" />
+                </div>
+              </div>
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <!-- Cases List -->
+      <div class="col-12">
+        <Card>
+          <template #title>
+            <div class="flex align-items-center justify-content-between">
+              <div class="flex align-items-center">
+                <i class="pi pi-list text-xl mr-2"></i>
+                <span class="text-xl font-medium">Available Cases</span>
+              </div>
+              <span class="p-input-icon-left">
+                <i class="pi pi-search" />
+                <InputText v-model="searchTerm" placeholder="Search cases..." class="p-inputtext-sm" />
+              </span>
+            </div>
+          </template>
+          <template #content>
+            <DataTable :value="cases" 
+                      :loading="loading" 
+                      dataKey="id"
+                      stripedRows
+                      class="p-datatable-sm"
+                      responsiveLayout="stack"
+                      :rowClass="(data) => ({'cursor-pointer': true})"
+                      @row-click="navigateToCase"
+                      v-model:filters="filters"
+                      filterDisplay="menu"
+                      :globalFilterFields="['id']">
+              <Column field="id" header="Case ID" style="width: 15%">
+                <template #body="slotProps">
+                  <span class="font-semibold">#{{ slotProps.data.id }}</span>
+                </template>
+              </Column>
+              
+              <Column header="Status" style="width: 25%">
+                <template #body="slotProps">
+                  <Tag :value="getStatusLabel(slotProps.data)" 
+                       :severity="getStatusSeverity(slotProps.data)"
+                       :icon="getStatusIcon(slotProps.data)" />
+                </template>
+              </Column>
+              
+              <Column style="width: 20%" header="Action">
+                <template #body="slotProps">
+                  <Button :icon="getStatusIcon(slotProps.data)"
+                         :label="getActionLabel(slotProps.data)"
+                         :severity="getStatusSeverity(slotProps.data)"
+                         size="small"
+                         @click="navigateToCase(slotProps.data)" />
+                </template>
+              </Column>
+            </DataTable>
+
+            <div v-if="!loading && cases.length === 0" class="surface-ground text-center p-5 border-round">
+              <i class="pi pi-inbox text-4xl text-600 mb-3"></i>
+              <div class="text-900 font-medium mb-2">No Cases Available</div>
+              <div class="text-600">There are currently no cases assigned to you.</div>
+            </div>
+          </template>
+        </Card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -107,10 +138,13 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
 import Toast from 'primevue/toast';
+import InputText from 'primevue/inputtext';
+import { useToast } from 'primevue/usetoast';
 
 const router = useRouter();
 const userStore = useUserStore();
 const caseStore = useCaseStore();
+const toast = useToast();
 
 const loading = ref(true);
 const cases = computed(() => caseStore.cases);
@@ -128,10 +162,25 @@ onMounted(async () => {
     return;
   }
   
+  loading.value = true;
   try {
-    await caseStore.loadCases(); // Changed from fetchCases to loadCases
+    const success = await caseStore.loadCases();
+    if (!success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load cases. Please try refreshing the page.',
+        life: 5000
+      });
+    }
   } catch (error) {
-    console.error('Failed to fetch cases:', error);
+    console.error('Failed to load cases:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load cases. Please try refreshing the page.',
+      life: 5000
+    });
   } finally {
     loading.value = false;
   }
@@ -168,24 +217,38 @@ const getActionLabel = (caseData: any) => {
   if (progress.preCompleted) return 'Continue';
   return 'Start';
 };
+
+const searchTerm = ref('');
+const filters = ref({});
 </script>
 
 <style scoped>
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 2rem;
 }
 
 :deep(.cursor-pointer) {
   cursor: pointer;
 }
 
+:deep(.p-card) {
+  background: var(--surface-card);
+  border-radius: var(--border-radius);
+}
+
 :deep(.p-progressbar) {
   background: var(--surface-ground);
 }
 
-:deep(.p-card) {
-  background: var(--surface-card);
-  border-radius: var(--border-radius);
+:deep(.shadow-1) {
+  box-shadow: 0 2px 1px -1px rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 1px 3px 0 rgba(0,0,0,.12);
+}
+
+@media screen and (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
 }
 </style>

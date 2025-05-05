@@ -1,0 +1,46 @@
+Step 3: Layout & Spacing Optimization
+php-template
+Copy
+Edit
+🎯 Objective:
+Improve layout and spacing across the UI using PrimeVue 4 + PrimeFlex to reduce visual clutter and organize content more effectively.
+
+📌 Setup Context:
+- PrimeVue is configured in styled mode with: `import Aura from '@primevue/themes/aura'`
+- PrimeFlex is available via: `import 'primeflex/primeflex.css'`
+- Do not use Bootstrap or legacy CSS grid systems
+
+🛠️ Instructions:
+1. Use `<div class="p-grid">` and `<div class="p-col-6">` to split content into two columns (or adjust to 12-col grid as needed)
+2. Group related inputs or UI blocks inside `<Fieldset legend="Section Title">` for clarity
+3. Use PrimeFlex spacing utilities:
+   - `p-mb-3`, `p-px-2`, `p-mt-4`, etc. for margin and padding
+4. Align form controls properly with consistent spacing between rows and columns
+5. Add responsiveness: use `p-col-12 p-md-6` or similar to make layout mobile-friendly
+6. Apply `text-center`, `flex`, or `justify-content-between` when aligning headers or buttons
+
+💡 Example:
+```vue
+<div class="p-grid">
+  <div class="p-col-12 p-md-6">
+    <Fieldset legend="Patient Info">
+      <div class="p-mb-3">
+        <label>Age</label>
+        <InputText v-model="age" />
+      </div>
+      <div class="p-mb-3">
+        <label>Gender</label>
+        <Dropdown :options="genders" v-model="gender" />
+      </div>
+    </Fieldset>
+  </div>
+  <div class="p-col-12 p-md-6">
+    <Fieldset legend="Diagnosis">
+      <div class="p-mb-3">
+        <label>Top Diagnosis</label>
+        <Dropdown :options="diagnoses" v-model="diagnosis1" />
+      </div>
+    </Fieldset>
+  </div>
+</div>
+⚠️ Only improve layout and spacing. Do not change component logic or break PrimeVue 4 styled mode.

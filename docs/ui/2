@@ -1,0 +1,49 @@
+Copilot Prompt for Visual Hierarchy (Step 2)
+php-template
+Copy
+Edit
+🎯 Objective:
+Improve the visual hierarchy of this Vue + PrimeVue 4 application to enhance content readability and user focus.
+
+📌 PrimeVue 4.x Styling Rules:
+- DO NOT use legacy theme CSS imports — this app uses styled mode with:
+  import Aura from '@primevue/themes/aura'
+  app.use(PrimeVue, { theme: { preset: Aura } })
+
+🛠️ Instructions:
+- Use `<Card>` components to group related sections (e.g., metadata, AI suggestions, user input).
+- Use `<Divider>` to clearly separate logical sections on the page.
+- Use heading elements (`<h2>`, `<h3>`) or `<span class="text-xl font-bold">` to establish section titles.
+- Use PrimeFlex classes (`p-mb-3`, `p-mt-2`, etc.) for spacing between elements.
+- Add subtle icons using `pi pi-*` classes inside headings for visual emphasis.
+
+📦 Required Components:
+- `Card` (for logical grouping)
+- `Divider` (for visual sectioning)
+- `Text` elements with controlled `font-weight`, `font-size` via classes
+- Optional: `Icon`, `Avatar`, `Tag` for extra context in headings
+
+📌 Keep styling consistent with the Aura theme (styled mode). Avoid legacy CSS theme usage.
+
+💡 Example:
+```vue
+<Card>
+  <template #title>
+    <span class="text-xl font-bold">
+      <i class="pi pi-user mr-2"></i> Patient Details
+    </span>
+  </template>
+  <template #content>
+    <div class="p-mb-3">Name: John Doe</div>
+    <div class="p-mb-3">Age: 45</div>
+  </template>
+</Card>
+
+<Divider />
+
+<Card>
+  <template #title>AI Assessment</template>
+  <template #content>
+    <p>Confidence Score: 93%</p>
+  </template>
+</Card>

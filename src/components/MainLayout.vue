@@ -8,13 +8,14 @@
       </template>
 
       <template #end>
-        <div class="flex align-items-center gap-3" v-if="isAuthenticated">
-          <span class="text-sm">
+        <div class="flex align-items-center gap-3 min-w-max" v-if="isAuthenticated">
+          <span class="text-sm whitespace-nowrap">
             <i class="pi pi-user mr-2"></i>{{ userEmail }}
           </span>
           <Button icon="pi pi-sign-out" 
                   severity="secondary"
                   text
+                  class="p-button-sm"
                   v-tooltip.left="'Logout'"
                   @click="handleLogout" />
         </div>
@@ -69,5 +70,15 @@ const handleLogout = async () => {
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+
+:deep(.p-button.p-button-icon-only) {
+  width: 2rem;
+  padding: 0.5rem 0;
+}
+
+:deep(.p-button.p-button-icon-only .p-button-icon) {
+  margin: 0;
 }
 </style>

@@ -496,59 +496,80 @@ const getCertaintyLabel = (score: number) => {
         <!-- Metadata Section -->
         <Card class="mb-4">
           <template #title>
-            <span class="text-xl font-bold flex align-items-center">
-              <i class="pi pi-info-circle mr-2"></i> Case Information
+            <span class="flex align-items-center justify-content-between">
+              <div class="flex align-items-center">
+                <i class="pi pi-info-circle mr-2"></i>
+                <span class="text-xl font-bold">Case Information</span>
+              </div>
               <Tag :value="isPostAiPhase ? 'Post-AI Phase' : 'Pre-AI Phase'"
-                   :severity="isPostAiPhase ? 'info' : 'warning'"
-                   class="ml-auto" />
+                   :severity="isPostAiPhase ? 'info' : 'warning'" />
             </span>
           </template>
           <template #content>
             <div v-if="metadata" class="grid">
-              <div v-if="metadata.age !== null" class="col-12 md:col-6">
-                <div class="surface-card border-round p-3">
-                  <div class="text-500 font-medium mb-2">Age</div>
-                  <div class="text-900">{{ metadata.age }}</div>
+              <div v-if="metadata.age !== null" class="col-12 md:col-6 xl:col-3">
+                <div class="surface-card border-round p-3 h-full">
+                  <div class="text-500 font-medium mb-2">
+                    <i class="pi pi-user mr-2"></i>Age
+                  </div>
+                  <div class="text-900 text-xl">{{ metadata.age }}</div>
                 </div>
               </div>
               
-              <div v-if="metadata.gender" class="col-12 md:col-6">
-                <div class="surface-card border-round p-3">
-                  <div class="text-500 font-medium mb-2">Gender</div>
-                  <div class="text-900">{{ metadata.gender }}</div>
+              <div v-if="metadata.gender" class="col-12 md:col-6 xl:col-3">
+                <div class="surface-card border-round p-3 h-full">
+                  <div class="text-500 font-medium mb-2">
+                    <i class="pi pi-venus-mars mr-2"></i>Gender
+                  </div>
+                  <div class="text-900 text-xl">{{ metadata.gender }}</div>
                 </div>
               </div>
               
-              <div v-if="metadata.fever_history !== null" class="col-12 md:col-6">
-                <div class="surface-card border-round p-3">
-                  <div class="text-500 font-medium mb-2">Fever History</div>
-                  <div class="text-900">
-                    <i :class="metadata.fever_history ? 'pi pi-check text-green-500' : 'pi pi-times text-red-500'" />
-                    {{ metadata.fever_history ? 'Yes' : 'No' }}
+              <div v-if="metadata.fever_history !== null" class="col-12 md:col-6 xl:col-3">
+                <div class="surface-card border-round p-3 h-full">
+                  <div class="text-500 font-medium mb-2">
+                    <i class="pi pi-thermometer mr-2"></i>Fever History
+                  </div>
+                  <div class="text-900 flex align-items-center">
+                    <i :class="[
+                      metadata.fever_history ? 'text-green-500' : 'text-red-500',
+                      metadata.fever_history ? 'pi pi-check' : 'pi pi-times',
+                      'mr-2 text-xl'
+                    ]" />
+                    <span class="text-xl">{{ metadata.fever_history ? 'Yes' : 'No' }}</span>
                   </div>
                 </div>
               </div>
               
-              <div v-if="metadata.psoriasis_history !== null" class="col-12 md:col-6">
-                <div class="surface-card border-round p-3">
-                  <div class="text-500 font-medium mb-2">Psoriasis History</div>
-                  <div class="text-900">
-                    <i :class="metadata.psoriasis_history ? 'pi pi-check text-green-500' : 'pi pi-times text-red-500'" />
-                    {{ metadata.psoriasis_history ? 'Yes' : 'No' }}
+              <div v-if="metadata.psoriasis_history !== null" class="col-12 md:col-6 xl:col-3">
+                <div class="surface-card border-round p-3 h-full">
+                  <div class="text-500 font-medium mb-2">
+                    <i class="pi pi-heart mr-2"></i>Psoriasis History
+                  </div>
+                  <div class="text-900 flex align-items-center">
+                    <i :class="[
+                      metadata.psoriasis_history ? 'text-green-500' : 'text-red-500',
+                      metadata.psoriasis_history ? 'pi pi-check' : 'pi pi-times',
+                      'mr-2 text-xl'
+                    ]" />
+                    <span class="text-xl">{{ metadata.psoriasis_history ? 'Yes' : 'No' }}</span>
                   </div>
                 </div>
               </div>
-              
+
               <div v-if="metadata.other_notes" class="col-12">
                 <div class="surface-card border-round p-3">
-                  <div class="text-500 font-medium mb-2">Additional Notes</div>
-                  <div class="text-900">{{ metadata.other_notes }}</div>
+                  <div class="text-500 font-medium mb-2">
+                    <i class="pi pi-file-edit mr-2"></i>Additional Notes
+                  </div>
+                  <div class="text-900 line-height-3">{{ metadata.other_notes }}</div>
                 </div>
               </div>
             </div>
+            
             <div v-else class="flex align-items-center justify-content-center p-4">
-              <i class="pi pi-spin pi-spinner mr-2"></i>
-              <span>Loading metadata...</span>
+              <i class="pi pi-spin pi-spinner text-xl mr-2"></i>
+              <span class="text-500">Loading metadata...</span>
             </div>
           </template>
         </Card>
@@ -601,116 +622,126 @@ const getCertaintyLabel = (score: number) => {
           </template>
           <template #content>
             <!-- Pre-AI Assessment Form -->
-            <form v-if="!isPostAiPhase" @submit.prevent="handlePreAiSubmit" class="p-fluid">
+            <form v-if="!isPostAiPhase" @submit.prevent="handlePreAiSubmit">
               <div class="grid">
+                <!-- Diagnosis Section -->
                 <div class="col-12">
-                  <div class="card">
-                    <h3 class="text-lg font-medium mb-3">
-                      <i class="pi pi-list mr-2"></i>Diagnosis Ranking
-                    </h3>
+                  <Panel class="mb-3">
+                    <template #header>
+                      <div class="flex align-items-center">
+                        <i class="pi pi-list mr-2"></i>
+                        <span class="font-semibold">Diagnosis Ranking</span>
+                      </div>
+                    </template>
                     
-                    <div class="field mb-4">
-                      <label for="diag1" class="text-600">Primary Diagnosis (Rank 1)</label>
-                      <Dropdown id="diag1" 
-                              v-model="preAiFormData.diagnosisRank1Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select primary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank1Id}"
-                              filter
-                              v-tooltip.top="'Select your primary diagnosis'"
-                              required />
-                    </div>
+                    <div class="grid">
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="diag1" 
+                                  v-model="preAiFormData.diagnosisRank1Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank1Id}"
+                                  filter
+                                  required />
+                          <label for="diag1">Primary Diagnosis (Rank 1)</label>
+                        </span>
+                      </div>
 
-                    <div class="field mb-4">
-                      <label for="diag2" class="text-600">Secondary Diagnosis (Rank 2)</label>
-                      <Dropdown id="diag2"
-                              v-model="preAiFormData.diagnosisRank2Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select secondary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank2Id}"
-                              filter
-                              v-tooltip.top="'Select your secondary diagnosis'"
-                              required />
-                    </div>
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="diag2"
+                                  v-model="preAiFormData.diagnosisRank2Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank2Id}"
+                                  filter
+                                  required />
+                          <label for="diag2">Secondary Diagnosis (Rank 2)</label>
+                        </span>
+                      </div>
 
-                    <div class="field mb-4">
-                      <label for="diag3" class="text-600">Tertiary Diagnosis (Rank 3)</label>
-                      <Dropdown id="diag3"
-                              v-model="preAiFormData.diagnosisRank3Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select tertiary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank3Id}"
-                              filter
-                              v-tooltip.top="'Select your tertiary diagnosis'"
-                              required />
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="diag3"
+                                  v-model="preAiFormData.diagnosisRank3Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank3Id}"
+                                  filter
+                                  required />
+                          <label for="diag3">Tertiary Diagnosis (Rank 3)</label>
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </Panel>
                 </div>
 
-                <Divider />
-
+                <!-- Confidence Section -->
                 <div class="col-12">
-                  <div class="card">
-                    <h3 class="text-lg font-medium mb-3">
-                      <i class="pi pi-chart-line mr-2"></i>Confidence Assessment
-                    </h3>
-                    
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Confidence in Primary Diagnosis</label>
-                      <div class="flex align-items-center gap-3">
-                        <SelectButton v-model="preAiFormData.confidenceScore"
-                                    :options="scoreOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    v-tooltip.top="'1=Low confidence, 5=High confidence'" />
-                        <span class="text-sm text-600">{{ getConfidenceLabel(preAiFormData.confidenceScore) }}</span>
+                  <Panel class="mb-3">
+                    <template #header>
+                      <div class="flex align-items-center">
+                        <i class="pi pi-chart-line mr-2"></i>
+                        <span class="font-semibold">Confidence Assessment</span>
+                      </div>
+                    </template>
+
+                    <div class="grid">
+                      <div class="col-12 mb-3">
+                        <label class="block text-600 mb-2">Confidence in Primary Diagnosis</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="preAiFormData.confidenceScore"
+                                      :options="scoreOptions"
+                                      optionLabel="label"
+                                      optionValue="value" />
+                          <span class="text-sm text-600">{{ getConfidenceLabel(preAiFormData.confidenceScore) }}</span>
+                        </div>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="management"
+                                  v-model="preAiFormData.managementStrategyId"
+                                  :options="managementStrategies"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !preAiFormData.managementStrategyId}"
+                                  required />
+                          <label for="management">Management Strategy</label>
+                        </span>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <span class="p-float-label">
+                          <Textarea id="managementNotes"
+                                  v-model="preAiFormData.managementNotes"
+                                  rows="3"
+                                  autoResize
+                                  class="w-full" />
+                          <label for="managementNotes">Management Notes</label>
+                        </span>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="block text-600 mb-2">Management Plan Certainty</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="preAiFormData.certaintyScore"
+                                      :options="scoreOptions"
+                                      optionLabel="label"
+                                      optionValue="value" />
+                          <span class="text-sm text-600">{{ getCertaintyLabel(preAiFormData.certaintyScore) }}</span>
+                        </div>
                       </div>
                     </div>
-
-                    <div class="field mb-4">
-                      <label for="management" class="text-600">Management Strategy</label>
-                      <Dropdown id="management"
-                              v-model="preAiFormData.managementStrategyId"
-                              :options="managementStrategies"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select management strategy"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !preAiFormData.managementStrategyId}"
-                              v-tooltip.top="'Choose the most appropriate management strategy'"
-                              required />
-                    </div>
-
-                    <div class="field mb-4">
-                      <label for="managementNotes" class="text-600">Management Notes</label>
-                      <Textarea id="managementNotes"
-                              v-model="preAiFormData.managementNotes"
-                              rows="3"
-                              autoResize
-                              placeholder="Enter any additional notes about the management plan" />
-                    </div>
-
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Management Plan Certainty</label>
-                      <div class="flex align-items-center gap-3">
-                        <SelectButton v-model="preAiFormData.certaintyScore"
-                                    :options="scoreOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    v-tooltip.top="'1=Low certainty, 5=High certainty'" />
-                        <span class="text-sm text-600">{{ getCertaintyLabel(preAiFormData.certaintyScore) }}</span>
-                      </div>
-                    </div>
-                  </div>
+                  </Panel>
                 </div>
 
                 <div class="col-12">
@@ -718,159 +749,184 @@ const getCertaintyLabel = (score: number) => {
                           :label="submitting ? 'Submitting...' : 'Submit & View AI Suggestions'"
                           :loading="submitting"
                           severity="primary"
-                          class="w-full"
-                          :disabled="submitting" />
+                          class="w-full p-3"
+                          :disabled="submitting">
+                    <i class="pi pi-arrow-right ml-2"></i>
+                  </Button>
                 </div>
               </div>
             </form>
 
             <!-- Post-AI Assessment Form -->
-            <form v-else @submit.prevent="handlePostAiSubmit" class="p-fluid">
+            <form v-else @submit.prevent="handlePostAiSubmit">
               <div class="grid">
+                <!-- Updated Diagnosis Section -->
                 <div class="col-12">
-                  <div class="card">
-                    <h3 class="text-lg font-medium mb-3">
-                      <i class="pi pi-list mr-2"></i>Updated Diagnosis Ranking
-                    </h3>
-                    
-                    <div class="field mb-4">
-                      <label for="postDiag1" class="text-600">Updated Primary Diagnosis (Rank 1)</label>
-                      <Dropdown id="postDiag1"
-                              v-model="postAiFormData.diagnosisRank1Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select updated primary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank1Id}"
-                              filter
-                              required />
-                    </div>
+                  <Panel class="mb-3">
+                    <template #header>
+                      <div class="flex align-items-center">
+                        <i class="pi pi-list mr-2"></i>
+                        <span class="font-semibold">Updated Diagnosis Ranking</span>
+                      </div>
+                    </template>
 
-                    <div class="field mb-4">
-                      <label for="postDiag2" class="text-600">Updated Secondary Diagnosis (Rank 2)</label>
-                      <Dropdown id="postDiag2"
-                              v-model="postAiFormData.diagnosisRank2Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select updated secondary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank2Id}"
-                              filter
-                              required />
-                    </div>
+                    <div class="grid">
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="postDiag1"
+                                  v-model="postAiFormData.diagnosisRank1Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank1Id}"
+                                  filter
+                                  required />
+                          <label for="postDiag1">Updated Primary Diagnosis</label>
+                        </span>
+                      </div>
 
-                    <div class="field mb-4">
-                      <label for="postDiag3" class="text-600">Updated Tertiary Diagnosis (Rank 3)</label>
-                      <Dropdown id="postDiag3"
-                              v-model="postAiFormData.diagnosisRank3Id"
-                              :options="diagnosisTerms"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select updated tertiary diagnosis"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank3Id}"
-                              filter
-                              required />
-                    </div>
-                  </div>
-                </div>
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="postDiag2"
+                                  v-model="postAiFormData.diagnosisRank2Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank2Id}"
+                                  filter
+                                  required />
+                          <label for="postDiag2">Updated Secondary Diagnosis</label>
+                        </span>
+                      </div>
 
-                <Divider />
-
-                <div class="col-12">
-                  <div class="card">
-                    <h3 class="text-lg font-medium mb-3">
-                      <i class="pi pi-chart-line mr-2"></i>Updated Confidence Assessment
-                    </h3>
-                    
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Updated Confidence in Primary Diagnosis</label>
-                      <div class="flex align-items-center gap-3">
-                        <SelectButton v-model="postAiFormData.confidenceScore"
-                                    :options="scoreOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    v-tooltip.top="'1=Low confidence, 5=High confidence'" />
-                        <span class="text-sm text-600">{{ getConfidenceLabel(postAiFormData.confidenceScore) }}</span>
+                      <div class="col-12 md:col-4 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="postDiag3"
+                                  v-model="postAiFormData.diagnosisRank3Id"
+                                  :options="diagnosisTerms"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank3Id}"
+                                  filter
+                                  required />
+                          <label for="postDiag3">Updated Tertiary Diagnosis</label>
+                        </span>
                       </div>
                     </div>
-
-                    <div class="field mb-4">
-                      <label for="postManagement" class="text-600">Updated Management Strategy</label>
-                      <Dropdown id="postManagement"
-                              v-model="postAiFormData.managementStrategyId"
-                              :options="managementStrategies"
-                              optionLabel="name"
-                              optionValue="id"
-                              placeholder="Select updated management strategy"
-                              class="w-full"
-                              :class="{'p-invalid': submitted && !postAiFormData.managementStrategyId}"
-                              required />
-                    </div>
-
-                    <div class="field mb-4">
-                      <label for="postManagementNotes" class="text-600">Updated Management Notes</label>
-                      <Textarea id="postManagementNotes"
-                              v-model="postAiFormData.managementNotes"
-                              rows="3"
-                              autoResize
-                              placeholder="Enter any additional notes about the updated management plan" />
-                    </div>
-
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Updated Management Plan Certainty</label>
-                      <div class="flex align-items-center gap-3">
-                        <SelectButton v-model="postAiFormData.certaintyScore"
-                                    :options="scoreOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    v-tooltip.top="'1=Low certainty, 5=High certainty'" />
-                        <span class="text-sm text-600">{{ getCertaintyLabel(postAiFormData.certaintyScore) }}</span>
-                      </div>
-                    </div>
-                  </div>
+                  </Panel>
                 </div>
 
-                <Divider />
-
+                <!-- Updated Confidence Section -->
                 <div class="col-12">
-                  <div class="card">
-                    <h3 class="text-lg font-medium mb-3">
-                      <i class="pi pi-star mr-2"></i>AI Impact Assessment
-                    </h3>
-                    
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Did AI suggestions change your primary diagnosis?</label>
-                      <SelectButton v-model="postAiFormData.changeDiagnosis"
-                                  :options="changeOptions"
+                  <Panel class="mb-3">
+                    <template #header>
+                      <div class="flex align-items-center">
+                        <i class="pi pi-chart-line mr-2"></i>
+                        <span class="font-semibold">Updated Confidence Assessment</span>
+                      </div>
+                    </template>
+
+                    <div class="grid">
+                      <div class="col-12 mb-3">
+                        <label class="block text-600 mb-2">Updated Confidence in Primary Diagnosis</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="postAiFormData.confidenceScore"
+                                      :options="scoreOptions"
+                                      optionLabel="label"
+                                      optionValue="value" />
+                          <span class="text-sm text-600">{{ getConfidenceLabel(postAiFormData.confidenceScore) }}</span>
+                        </div>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <span class="p-float-label">
+                          <Dropdown id="postManagement"
+                                  v-model="postAiFormData.managementStrategyId"
+                                  :options="managementStrategies"
+                                  optionLabel="name"
+                                  optionValue="id"
+                                  class="w-full"
+                                  :class="{'p-invalid': submitted && !postAiFormData.managementStrategyId}"
+                                  required />
+                          <label for="postManagement">Updated Management Strategy</label>
+                        </span>
+                      </div>
+
+                      <div class="col-12 mb-3">
+                        <span class="p-float-label">
+                          <Textarea id="postManagementNotes"
+                                  v-model="postAiFormData.managementNotes"
+                                  rows="3"
+                                  autoResize
+                                  class="w-full" />
+                          <label for="postManagementNotes">Updated Management Notes</label>
+                        </span>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="block text-600 mb-2">Updated Management Plan Certainty</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="postAiFormData.certaintyScore"
+                                      :options="scoreOptions"
+                                      optionLabel="label"
+                                      optionValue="value" />
+                          <span class="text-sm text-600">{{ getCertaintyLabel(postAiFormData.certaintyScore) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Panel>
+                </div>
+
+                <!-- AI Impact Section -->
+                <div class="col-12">
+                  <Panel class="mb-3">
+                    <template #header>
+                      <div class="flex align-items-center">
+                        <i class="pi pi-star mr-2"></i>
+                        <span class="font-semibold">AI Impact Assessment</span>
+                      </div>
+                    </template>
+
+                    <div class="grid">
+                      <div class="col-12 md:col-6 mb-3">
+                        <label class="block text-600 mb-2">Did AI suggestions change your primary diagnosis?</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="postAiFormData.changeDiagnosis"
+                                      :options="changeOptions"
+                                      optionLabel="label"
+                                      optionValue="value"
+                                      required />
+                        </div>
+                      </div>
+
+                      <div class="col-12 md:col-6 mb-3">
+                        <label class="block text-600 mb-2">Did AI suggestions change your management plan?</label>
+                        <div class="flex align-items-center gap-3">
+                          <SelectButton v-model="postAiFormData.changeManagement"
+                                      :options="changeOptions"
+                                      optionLabel="label"
+                                      optionValue="value"
+                                      required />
+                        </div>
+                      </div>
+
+                      <div class="col-12">
+                        <span class="p-float-label">
+                          <Dropdown id="aiUsefulness"
+                                  v-model="postAiFormData.aiUsefulness"
+                                  :options="aiUsefulnessOptions"
                                   optionLabel="label"
                                   optionValue="value"
+                                  class="w-full"
                                   required />
+                          <label for="aiUsefulness">How useful were the AI suggestions?</label>
+                        </span>
+                      </div>
                     </div>
-
-                    <div class="field mb-4">
-                      <label class="text-600 block mb-2">Did AI suggestions change your management plan?</label>
-                      <SelectButton v-model="postAiFormData.changeManagement"
-                                  :options="changeOptions"
-                                  optionLabel="label"
-                                  optionValue="value"
-                                  required />
-                    </div>
-
-                    <div class="field mb-4">
-                      <label for="aiUsefulness" class="text-600">How useful were the AI suggestions?</label>
-                      <Dropdown id="aiUsefulness"
-                              v-model="postAiFormData.aiUsefulness"
-                              :options="aiUsefulnessOptions"
-                              optionLabel="label"
-                              optionValue="value"
-                              placeholder="Select usefulness level"
-                              class="w-full"
-                              required />
-                    </div>
-                  </div>
+                  </Panel>
                 </div>
 
                 <div class="col-12">
@@ -879,7 +935,7 @@ const getCertaintyLabel = (score: number) => {
                           icon="pi pi-check-circle"
                           :loading="submitting"
                           severity="success"
-                          class="w-full"
+                          class="w-full p-3"
                           :disabled="submitting" />
                 </div>
               </div>
@@ -915,10 +971,23 @@ const getCertaintyLabel = (score: number) => {
 :deep(.p-selectbutton) {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;  /* Center the buttons */
+  gap: 0.5rem;  /* Add spacing between buttons */
 }
 
 :deep(.p-selectbutton .p-button) {
-  flex: 1;
+  flex: 0 1 auto;  /* Allow buttons to size based on content */
+  min-width: 3rem;  /* Minimum width for buttons */
+}
+
+:deep(.flex.align-items-center.gap-3) {
+  justify-content: center;  /* Center the entire confidence/certainty section */
+  gap: 1rem !important;  /* Increase gap between elements */
+}
+
+:deep(.text-sm.text-600) {
+  min-width: 140px;  /* Fixed width for labels to align them */
+  text-align: left;
 }
 
 :deep(.p-dropdown), :deep(.p-selectbutton) {
@@ -932,6 +1001,16 @@ const getCertaintyLabel = (score: number) => {
 @media screen and (max-width: 960px) {
   .case-container {
     padding: 1rem;
+  }
+  
+  :deep(.flex.align-items-center.gap-3) {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  :deep(.text-sm.text-600) {
+    text-align: center;
+    margin-top: 0.5rem;
   }
 }
 </style>

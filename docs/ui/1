@@ -1,0 +1,31 @@
+Final, Copilot-Ready Prompt with Version Lock + Theming Rules
+markdown
+Copy
+Edit
+🎯 Objective:
+Improve the UI of this Vue 3 + PrimeVue 4.x application using styled mode, Aura theme, and proper modern PrimeVue component usage.
+
+🧠 PrimeVue 4.x Setup Rules (VERY IMPORTANT):
+- PrimeVue 4 uses a "styled mode" with **theme presets**, NOT CSS theme files.
+- ❌ DO NOT use legacy imports like: `import 'primevue/resources/themes/saga-blue/theme.css'`
+- ✅ INSTEAD: Use styled theming like:
+  import Aura from '@primevue/themes/aura'
+  app.use(PrimeVue, { theme: { preset: Aura } })
+
+📦 Ensure the following packages are installed:
+- `primevue` (must be version ^4.x)
+- `@primevue/themes` (for Aura and other styled themes)
+- `primeicons` (for icons)
+- ONLY import icons manually:
+  import 'primeicons/primeicons.css';
+
+🎨 Theming & UI Goals:
+1. Apply a modern, readable layout using PrimeVue 4 components.
+2. Use `Card`, `Divider`, `Accordion`, `DataTable`, `Button`, `Tag`, `Tooltip`, `Toast`, `Dialog` where applicable.
+3. Add PrimeFlex layout classes for spacing, grid, and responsiveness.
+4. Use `severity` variants for buttons and tags to visually differentiate actions and statuses.
+5. Use `v-tooltip` on inputs or buttons for helper text.
+6. Do not change any business logic — only improve the UI structure and design using proper PrimeVue 4.x styled components.
+
+💡 NOTE FOR COPILOT:
+This app uses the **PrimeVue 4 styled system** and **Aura theme**, so DO NOT suggest `.css` theme

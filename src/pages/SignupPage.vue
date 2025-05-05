@@ -1,48 +1,134 @@
 <template>
-  <div class="signup-container">
-    <Toast />
-    <Card>
-      <template #title>Sign Up</template>
-      <template #content>
-        <form @submit.prevent="handleSignup">
-          <div class="p-fluid">
-            <div class="p-field mb-4">
-              <label for="email">Email</label>
-              <InputText id="email" type="email" v-model="formData.email" required />
-            </div>
-            <div class="p-field mb-4">
-              <label for="password">Password</label>
-              <Password id="password" v-model="formData.password" required toggleMask :feedback="true" />
-            </div>
-            <div class="p-field mb-4">
-              <label for="age">Age Bracket</label>
-              <Dropdown id="age" v-model="formData.age_bracket" :options="ageBrackets" placeholder="Select Age Bracket" required />
-            </div>
-            <div class="p-field mb-4">
-              <label for="gender">Gender</label>
-              <Dropdown id="gender" v-model="formData.gender" :options="genders" placeholder="Select Gender" required />
-            </div>
-            <div class="p-field mb-4">
-              <label for="exp">Years Clinical Experience</label>
-              <InputNumber id="exp" v-model="formData.years_experience" mode="decimal" :min="0" required />
-            </div>
-            <div class="p-field mb-4">
-              <label for="dermExp">Years Dermatology Experience</label>
-              <InputNumber id="dermExp" v-model="formData.years_derm_experience" mode="decimal" :min="0" required />
-            </div>
-            <div class="p-field mb-4">
-              <label for="role">Role</label>
-              <!-- Use fetched roles -->
-              <Dropdown id="role" v-model="formData.role_id" :options="roles" optionLabel="name" optionValue="id" placeholder="Select Role" required :loading="rolesLoading" />
-            </div>
-            <Button type="submit" label="Sign Up" :loading="loading" />
+  <div class="flex align-items-center justify-content-center min-h-screen bg-surface-50 px-4 py-8">
+    <div class="signup-container">
+      <Toast />
+      <Card class="surface-card shadow-2 border-round p-4">
+        <template #title>
+          <div class="text-center mb-5">
+            <div class="text-900 text-3xl font-medium mb-3">Create Account</div>
+            <span class="text-600 font-medium">Join the reader study</span>
           </div>
-        </form>
-         <div class="mt-4 text-center">
-          Already have an account? <router-link to="/login">Log in</router-link>
-        </div>
-      </template>
-    </Card>
+        </template>
+        <template #content>
+          <form @submit.prevent="handleSignup" class="p-fluid">
+            <div class="grid">
+              <!-- Email Field -->
+              <div class="col-12 mb-4">
+                <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+                  <i class="pi pi-envelope text-500" />
+                  <InputText
+                    v-model="formData.email"
+                    placeholder="Email"
+                    class="w-full border-none shadow-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Password Field -->
+              <div class="col-12 mb-4">
+                <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+                  <i class="pi pi-lock text-500" />
+                  <Password
+                    v-model="formData.password"
+                    placeholder="Password"
+                    :toggleMask="true"
+                    :feedback="true"
+                    class="w-full border-none shadow-none"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="grid">
+              <div class="col-12 md:col-6 mb-4">
+                <span class="p-float-label">
+                  <Dropdown 
+                    id="gender" 
+                    v-model="formData.gender" 
+                    :options="genders" 
+                    class="w-full"
+                    required 
+                  />
+                  <label for="gender">Gender</label>
+                </span>
+              </div>
+
+              <div class="col-12 md:col-6 mb-4">
+                <span class="p-float-label">
+                  <InputNumber 
+                    id="exp" 
+                    v-model="formData.years_experience" 
+                    :min="0" 
+                    :step="1"
+                    showButtons
+                    class="w-full" 
+                    required
+                  />
+                  <label for="exp">Years Clinical Experience</label>
+                </span>
+              </div>
+
+              <div class="col-12 md:col-6 mb-4">
+                <span class="p-float-label">
+                  <InputNumber 
+                    id="dermExp" 
+                    v-model="formData.years_derm_experience" 
+                    :min="0" 
+                    :step="1"
+                    showButtons
+                    class="w-full" 
+                    required
+                  />
+                  <label for="dermExp">Years Dermatology Experience</label>
+                </span>
+              </div>
+
+              <div class="col-12 mb-4">
+                <span class="p-float-label">
+                  <Dropdown 
+                    id="role" 
+                    v-model="formData.role_id" 
+                    :options="roles" 
+                    optionLabel="name" 
+                    optionValue="id" 
+                    class="w-full"
+                    :loading="rolesLoading"
+                    required 
+                  />
+                  <label for="role">Professional Role</label>
+                </span>
+              </div>
+
+              <div class="col-12">
+                <Button 
+                  type="submit" 
+                  :label="loading ? 'Creating account...' : 'Create account'" 
+                  :loading="loading"
+                  severity="primary"
+                  class="w-full p-3 mb-4"
+                />
+
+                <div class="text-center">
+                  <Divider align="center">
+                    <span class="text-600 font-medium">Already have an account?</span>
+                  </Divider>
+                  <router-link to="/login" class="no-underline">
+                    <Button 
+                      type="button" 
+                      label="Sign in instead" 
+                      severity="secondary" 
+                      outlined
+                      class="w-full p-3"
+                    />
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </form>
+        </template>
+      </Card>
+    </div>
   </div>
 </template>
 
@@ -56,6 +142,7 @@ import Dropdown from 'primevue/dropdown';
 import InputNumber from 'primevue/inputnumber';
 import Card from 'primevue/card';
 import Toast from 'primevue/toast';
+import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import apiClient from '../api';
 
@@ -90,7 +177,7 @@ const genders = ref(['Male', 'Female', 'Other', 'Prefer not to say']);
 onMounted(async () => {
   rolesLoading.value = true;
   try {
-    const response = await apiClient.get<Role[]>('/roles/'); // Fetch roles from API
+    const response = await apiClient.get<Role[]>('/api/roles/'); // Added /api prefix to match OpenAPI spec
     roles.value = response.data;
   } catch (error) {
     console.error("Failed to fetch roles:", error);
@@ -146,14 +233,27 @@ const handleSignup = async () => {
 
 <style scoped>
 .signup-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem 0; /* Add padding for scroll */
+  width: 100%;
+  max-width: 600px;
 }
 
 :deep(.p-card) {
+  background: var(--surface-card);
+  border-radius: var(--border-radius);
+}
+
+:deep(.p-inputnumber-input) {
   width: 100%;
-  max-width: 500px; /* Wider card for more fields */
+}
+
+:deep(.p-password),
+:deep(.p-dropdown) {
+  width: 100%;
+}
+
+@media screen and (max-width: 576px) {
+  .signup-container {
+    max-width: 100%;
+  }
 }
 </style>

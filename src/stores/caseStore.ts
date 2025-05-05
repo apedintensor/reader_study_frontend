@@ -59,9 +59,12 @@ export const useCaseStore = defineStore('case', () => {
     try {
       const response = await apiClient.get<Case[]>('/api/cases/?limit=100');
       cases.value = response.data;
+      // After we have cases from API, restore progress
       loadProgressFromCache();
+      return true;
     } catch (error) {
       console.error('Failed to load cases:', error);
+      return false;
     }
   }
 
