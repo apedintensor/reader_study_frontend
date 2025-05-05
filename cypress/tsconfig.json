@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json", // Extend the root tsconfig
+  "compilerOptions": {
+    "target": "es5", // Cypress might need a different target
+    "lib": ["es5", "dom"], // Include DOM library
+    "types": ["cypress", "node"], // Crucially, include Cypress types
+    "isolatedModules": false // Cypress files are not modules in the same way
+  },
+  "include": [
+    "**/*.ts" // Include all TS files within the cypress folder
+  ]
+}
