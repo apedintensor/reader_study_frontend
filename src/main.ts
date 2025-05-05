@@ -3,6 +3,7 @@ import './style.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config';
+import ToastService from 'primevue/toastservice'; // Import ToastService
 import Lara from '@primevue/themes/lara'; // Import the Lara preset
 import 'primeicons/primeicons.css';                           // Icons
 
@@ -13,6 +14,7 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+app.use(ToastService); // Add ToastService
 // Configure PrimeVue with the theme preset
 app.use(PrimeVue, {
   theme: {
