@@ -101,10 +101,9 @@ const loading = ref(false);
 const submitting = ref(false);
 
 // --- Phase Detection ---
-const isPreAiCompleteForCurrentCase = computed(() => {
-  return caseStore.completedCases.includes(caseId.value);
-});
-const isPostAiPhase = ref(false);
+const caseProgress = computed(() => caseStore.getCaseProgress(caseId.value));
+const isPreAiCompleteForCurrentCase = computed(() => caseProgress.value.preCompleted);
+const isPostAiPhase = computed(() => isPreAiCompleteForCurrentCase.value);
 
 // --- Form Data ---
 const preAiFormData = reactive({
@@ -149,14 +148,10 @@ const changeOptions = ref([
 const fetchData = async () => {
   if (!caseId.value) return;
   loading.value = true;
-  isPostAiPhase.value = false;
   aiOutputs.value = [];
   diagnosisTerms.value = [];
 
   try {
-    const preAiDone = caseStore.completedCases.includes(caseId.value);
-    isPostAiPhase.value = preAiDone;
-
     const commonFetches = [
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
       apiClient.get<CaseMetaDataRead>(`/api/case_metadata/case/${caseId.value}`),
@@ -214,8 +209,20 @@ const clearLocalStorage = (key: string) => {
 watch(preAiFormData, () => saveToLocalStorage(preAiLocalStorageKey.value, preAiFormData), { deep: true });
 watch(postAiFormData, () => saveToLocalStorage(postAiLocalStorageKey.value, postAiFormData), { deep: true });
 
-onMounted(fetchData);
-watch(caseId, fetchData);
+watch(() => route.params.id, async (newId) => {
+  const progress = caseStore.getCaseProgress(parseInt(newId as string, 10));
+  if (!progress.preCompleted && route.query.phase === 'post') {
+    toast.add({
+      severity: 'warn',
+      summary: 'Access Denied',
+      detail: 'Please complete the Pre-AI assessment first.',
+      life: 3000
+    });
+    router.replace(`/case/${newId}`);
+    return;
+  }
+  await fetchData();
+}, { immediate: true });
 
 // --- Submission Logic ---
 const handlePreAiSubmit = async () => {
@@ -269,7 +276,7 @@ const handlePreAiSubmit = async () => {
 
     caseStore.markCaseComplete(caseId.value);
     clearLocalStorage(preAiLocalStorageKey.value);
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved.', life: 2000 });
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
 
     await fetchData();
   } catch (error: any) {
@@ -339,8 +346,7 @@ const handlePostAiSubmit = async () => {
     clearLocalStorage(postAiLocalStorageKey.value);
     toast.add({ severity: 'success', summary: 'Success', detail: 'Post-AI assessment saved.', life: 2000 });
 
-    caseStore.goToNextCase();
-    const nextCase = caseStore.getCurrentCase;
+    const nextCase = caseStore.getNextIncompleteCase();
     if (nextCase) {
       router.push(`/case/${nextCase.id}`);
     } else {

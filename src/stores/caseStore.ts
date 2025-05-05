@@ -41,38 +41,103 @@ interface Case {
   ai_outputs: AIOutput[];
 }
 
+interface CaseProgress {
+  caseId: number;
+  preCompleted: boolean;
+  postCompleted: boolean;
+}
+
 export const useCaseStore = defineStore('case', () => {
   // State
   const cases = ref<Case[]>([]);
   const currentIndex = ref<number>(0);
-  const completedCases = ref<number[]>([]); // Store IDs of completed cases
+  const completedCases = ref<number[]>([]); // For backward compatibility
+  const caseProgress = ref<Record<number, CaseProgress>>({});
 
   // Actions
   async function loadCases() {
     try {
-      // Fetch cases from the API - adjust limit as needed
-      const response = await apiClient.get<Case[]>('/api/cases/?limit=100'); // Updated endpoint to include /api prefix
+      const response = await apiClient.get<Case[]>('/api/cases/?limit=100');
       cases.value = response.data;
-      console.log("Cases loaded:", cases.value);
-      // Load progress after fetching cases
-      loadProgressFromLocalStorage();
+      loadProgressFromCache();
     } catch (error) {
       console.error('Failed to load cases:', error);
-      // Handle error appropriately (e.g., show a toast message)
     }
   }
 
-  function markCaseComplete(caseId: number) {
-    if (!completedCases.value.includes(caseId)) {
-      completedCases.value.push(caseId);
-      saveProgressToLocalStorage();
+  function loadProgressFromCache() {
+    const storedProgress = localStorage.getItem('caseProgress');
+    if (storedProgress) {
+      try {
+        caseProgress.value = JSON.parse(storedProgress);
+        // Update completedCases for backward compatibility
+        completedCases.value = Object.values(caseProgress.value)
+          .filter(p => p.postCompleted)
+          .map(p => p.caseId);
+      } catch (e) {
+        console.error('Failed to parse case progress:', e);
+        caseProgress.value = {};
+      }
     }
+  }
+
+  function saveProgressToCache() {
+    localStorage.setItem('caseProgress', JSON.stringify(caseProgress.value));
+  }
+
+  function markCaseComplete(caseId: number) {
+    if (!caseProgress.value[caseId]) {
+      caseProgress.value[caseId] = { caseId, preCompleted: false, postCompleted: false };
+    }
+    
+    // Update progress based on phase
+    const progress = caseProgress.value[caseId];
+    if (!progress.preCompleted) {
+      progress.preCompleted = true;
+    } else {
+      progress.postCompleted = true;
+      if (!completedCases.value.includes(caseId)) {
+        completedCases.value.push(caseId);
+      }
+    }
+    saveProgressToCache();
+  }
+
+  function getIncompleteCases() {
+    return cases.value.filter(c => {
+      const progress = caseProgress.value[c.id];
+      return !progress || !progress.postCompleted;
+    });
+  }
+
+  function getNextIncompleteCase(): Case | null {
+    // First, look for cases that need pre-AI assessment
+    const preIncomplete = cases.value.find(c => {
+      const progress = caseProgress.value[c.id];
+      return !progress || !progress.preCompleted;
+    });
+    if (preIncomplete) return preIncomplete;
+
+    // Then, look for cases that need post-AI assessment
+    const postIncomplete = cases.value.find(c => {
+      const progress = caseProgress.value[c.id];
+      return progress?.preCompleted && !progress.postCompleted;
+    });
+    return postIncomplete || null;
+  }
+
+  function getCaseProgress(caseId: number): CaseProgress {
+    if (!caseProgress.value[caseId]) {
+      caseProgress.value[caseId] = { caseId, preCompleted: false, postCompleted: false };
+      saveProgressToCache();
+    }
+    return caseProgress.value[caseId];
   }
 
   function goToNextCase() {
     if (currentIndex.value < cases.value.length - 1) {
       currentIndex.value++;
-      saveProgressToLocalStorage();
+      saveProgressToCache();
     } else {
       console.log("No more cases.");
       // Optionally navigate to a completion page
@@ -82,54 +147,14 @@ export const useCaseStore = defineStore('case', () => {
   function goToCase(index: number) {
     if (index >= 0 && index < cases.value.length) {
         currentIndex.value = index;
-        saveProgressToLocalStorage();
+        saveProgressToCache();
     } else {
         console.warn(`Attempted to navigate to invalid case index: ${index}`);
     }
   }
 
-  function saveProgressToLocalStorage() {
-    localStorage.setItem('caseIndex', currentIndex.value.toString());
-    localStorage.setItem('completedCases', JSON.stringify(completedCases.value));
-  }
-
-  function loadProgressFromLocalStorage() {
-    const storedIndex = localStorage.getItem('caseIndex');
-    const storedCompleted = localStorage.getItem('completedCases');
-
-    if (storedIndex) {
-      const index = parseInt(storedIndex, 10);
-      // Ensure the loaded index is valid for the current set of cases
-      if (!isNaN(index) && index >= 0 && index < cases.value.length) {
-          currentIndex.value = index;
-      } else {
-          currentIndex.value = 0; // Reset if invalid
-      }
-    } else {
-        currentIndex.value = 0; // Default to first case if nothing stored
-    }
-
-    if (storedCompleted) {
-      try {
-        const completed = JSON.parse(storedCompleted);
-        if (Array.isArray(completed) && completed.every(id => typeof id === 'number')) {
-            completedCases.value = completed;
-        } else {
-            completedCases.value = []; // Reset if invalid format
-        }
-      } catch (e) {
-        console.error("Failed to parse completed cases from localStorage", e);
-        completedCases.value = []; // Reset on error
-      }
-    } else {
-        completedCases.value = []; // Default to empty array
-    }
-
-    console.log(`Resuming at index: ${currentIndex.value}, Completed: ${completedCases.value.join(', ')}`);
-  }
-
-  // Getters (computed properties)
-  const getCurrentCase = computed<Case | null>(() => {
+  // Computed
+  const getCurrentCase = computed(() => {
     if (cases.value.length > 0 && currentIndex.value >= 0 && currentIndex.value < cases.value.length) {
       return cases.value[currentIndex.value];
     }
@@ -137,14 +162,7 @@ export const useCaseStore = defineStore('case', () => {
   });
 
   const totalCases = computed(() => cases.value.length);
-  const remainingCases = computed(() => {
-      return cases.value.filter(c => !completedCases.value.includes(c.id)).length;
-  });
-
-  // Initialize by loading cases (which then loads progress)
-  // Consider calling loadCases() from the component where it's first needed,
-  // e.g., when the user logs in or navigates to the dashboard.
-  // loadCases(); // Or call this explicitly elsewhere
+  const remainingCases = computed(() => getIncompleteCases().length);
 
   return {
     cases,
@@ -153,11 +171,12 @@ export const useCaseStore = defineStore('case', () => {
     loadCases,
     markCaseComplete,
     goToNextCase,
-    goToCase, // Added for potential direct navigation
+    goToCase,
     getCurrentCase,
     totalCases,
     remainingCases,
-    loadProgressFromLocalStorage, // Expose if needed externally
-    saveProgressToLocalStorage, // Expose if needed externally
+    getIncompleteCases,
+    getNextIncompleteCase,
+    getCaseProgress,
   };
 });
