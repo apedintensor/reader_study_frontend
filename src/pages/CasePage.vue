@@ -19,6 +19,10 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import SelectButton from 'primevue/selectbutton';
 import Divider from 'primevue/divider';
+import Steps from 'primevue/steps';
+import Tag from 'primevue/tag';
+import Message from 'primevue/message';
+import ProgressBar from 'primevue/progressbar';
 
 // --- Interfaces ---
 interface ImageRead {
@@ -423,221 +427,511 @@ const handleApiError = (error: any, summary: string) => {
   }
   toast.add({ severity: 'error', summary: summary, detail: detail, life: 5000 });
 };
+
+// --- Computed Functions for Labels ---
+const getConfidenceLabel = (score: number) => {
+  switch(score) {
+    case 1: return 'Very Low Confidence';
+    case 2: return 'Low Confidence';
+    case 3: return 'Moderate Confidence';
+    case 4: return 'High Confidence';
+    case 5: return 'Very High Confidence';
+    default: return 'Select Confidence Level';
+  }
+};
+
+const getCertaintyLabel = (score: number) => {
+  switch(score) {
+    case 1: return 'Very Uncertain';
+    case 2: return 'Somewhat Uncertain';
+    case 3: return 'Moderately Certain';
+    case 4: return 'Quite Certain';
+    case 5: return 'Very Certain';
+    default: return 'Select Certainty Level';
+  }
+};
 </script>
 
 <template>
-  <div class="case-page p-4">
+  <div class="case-container p-4">
     <Toast />
-    <Card>
-      <template #title>
-        Case Assessment - ID: {{ caseId }} ({{ isPostAiPhase ? 'Post-AI' : 'Pre-AI' }})
-      </template>
+    
+    <!-- Progress Steps -->
+    <Card class="mb-4">
       <template #content>
-        <div v-if="loading" class="text-center">
-          <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i> Loading Case Data...
-        </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <Carousel :value="images" :numVisible="1" :numScroll="1" v-if="images.length > 0" class="mb-4">
-              <template #item="slotProps">
-                <div class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4 text-center">
-                  <img :src="slotProps.data.image_url" :alt="'Case Image ' + slotProps.data.id" class="w-full block rounded max-h-[60vh] object-contain" />
-                </div>
-              </template>
-            </Carousel>
-            <div v-else class="text-center p-4 border border-surface-200 dark:border-surface-700 rounded mb-4">
-              No images available for this case.
+        <Steps :model="items" :activeIndex="activeStep" />
+      </template>
+    </Card>
+
+    <div class="grid">
+      <!-- Left Column -->
+      <div class="col-12 lg:col-5">
+        <!-- Images Section -->
+        <Card class="mb-4">
+          <template #title>
+            <span class="text-xl font-bold flex align-items-center">
+              <i class="pi pi-images mr-2"></i> Case Images
+            </span>
+          </template>
+          <template #content>
+            <div v-if="loading" class="flex align-items-center justify-content-center p-4">
+              <i class="pi pi-spin pi-spinner text-2xl mr-2"></i>
+              <span>Loading images...</span>
             </div>
+            <div v-else>
+              <Carousel :value="images" :numVisible="1" :numScroll="1" v-if="images.length > 0"
+                       :showNavigators="false" class="mb-4">
+                <template #item="slotProps">
+                  <div class="surface-card border-round m-2 text-center">
+                    <img :src="slotProps.data.image_url" :alt="'Case Image ' + slotProps.data.id" 
+                         class="w-full block shadow-2 border-round max-h-[60vh] object-contain" />
+                  </div>
+                </template>
+              </Carousel>
+              <Message v-else severity="info" text="No images available for this case." />
+            </div>
+          </template>
+        </Card>
 
-            <Panel header="Case Metadata" toggleable v-if="metadata" class="mb-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div v-if="metadata.age !== null && metadata.age !== undefined" class="metadata-item">
-                  <div class="font-semibold">Age</div>
-                  <div>{{ metadata.age }}</div>
-                </div>
-                <div v-if="metadata.gender" class="metadata-item">
-                  <div class="font-semibold">Gender</div>
-                  <div>{{ metadata.gender }}</div>
-                </div>
-                <div v-if="metadata.fever_history !== null && metadata.fever_history !== undefined" class="metadata-item">
-                  <div class="font-semibold">Fever History</div>
-                  <div>{{ metadata.fever_history ? 'Yes' : 'No' }}</div>
-                </div>
-                <div v-if="metadata.psoriasis_history !== null && metadata.psoriasis_history !== undefined" class="metadata-item">
-                  <div class="font-semibold">Psoriasis History</div>
-                  <div>{{ metadata.psoriasis_history ? 'Yes' : 'No' }}</div>
+        <!-- Metadata Section -->
+        <Card class="mb-4">
+          <template #title>
+            <span class="text-xl font-bold flex align-items-center">
+              <i class="pi pi-info-circle mr-2"></i> Case Information
+              <Tag :value="isPostAiPhase ? 'Post-AI Phase' : 'Pre-AI Phase'"
+                   :severity="isPostAiPhase ? 'info' : 'warning'"
+                   class="ml-auto" />
+            </span>
+          </template>
+          <template #content>
+            <div v-if="metadata" class="grid">
+              <div v-if="metadata.age !== null" class="col-12 md:col-6">
+                <div class="surface-card border-round p-3">
+                  <div class="text-500 font-medium mb-2">Age</div>
+                  <div class="text-900">{{ metadata.age }}</div>
                 </div>
               </div>
-              <div v-if="metadata.other_notes" class="mt-4">
-                <div class="font-semibold">Other Notes</div>
-                <div>{{ metadata.other_notes }}</div>
+              
+              <div v-if="metadata.gender" class="col-12 md:col-6">
+                <div class="surface-card border-round p-3">
+                  <div class="text-500 font-medium mb-2">Gender</div>
+                  <div class="text-900">{{ metadata.gender }}</div>
+                </div>
               </div>
-              <p v-if="!metadata.age && !metadata.gender && metadata.fever_history === null && metadata.psoriasis_history === null && !metadata.other_notes">
-                No metadata available.
-              </p>
-            </Panel>
-            <Panel header="Case Metadata" v-else class="mb-4">
-              <p>Loading metadata...</p>
-            </Panel>
-
-            <Panel header="AI Predictions (Top 5)" v-if="isPostAiPhase" class="mb-4">
-              <div v-if="aiOutputs.length > 0">
-                <DataTable :value="aiOutputs" size="small">
-                  <Column field="rank" header="Rank"></Column>
-                  <Column field="prediction.name" header="Diagnosis"></Column>
-                  <Column field="confidence_score" header="Confidence">
-                    <template #body="slotProps">
-                      {{ slotProps.data.confidence_score !== null ? (slotProps.data.confidence_score * 100).toFixed(1) + '%' : 'N/A' }}
-                    </template>
-                  </Column>
-                </DataTable>
+              
+              <div v-if="metadata.fever_history !== null" class="col-12 md:col-6">
+                <div class="surface-card border-round p-3">
+                  <div class="text-500 font-medium mb-2">Fever History</div>
+                  <div class="text-900">
+                    <i :class="metadata.fever_history ? 'pi pi-check text-green-500' : 'pi pi-times text-red-500'" />
+                    {{ metadata.fever_history ? 'Yes' : 'No' }}
+                  </div>
+                </div>
               </div>
-              <p v-else>No AI predictions available for this case.</p>
-            </Panel>
-          </div>
-
-          <div>
-            <form v-if="!isPostAiPhase" @submit.prevent="handlePreAiSubmit">
-              <div class="p-fluid space-y-4">
-                <h3 class="font-semibold text-lg mb-2">Your Assessment (Pre-AI)</h3>
-                <div class="field">
-                  <label for="diag1">Top Diagnosis (Rank 1)</label>
-                  <Dropdown id="diag1" v-model="preAiFormData.diagnosisRank1Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 1" required filter class="w-full" />
+              
+              <div v-if="metadata.psoriasis_history !== null" class="col-12 md:col-6">
+                <div class="surface-card border-round p-3">
+                  <div class="text-500 font-medium mb-2">Psoriasis History</div>
+                  <div class="text-900">
+                    <i :class="metadata.psoriasis_history ? 'pi pi-check text-green-500' : 'pi pi-times text-red-500'" />
+                    {{ metadata.psoriasis_history ? 'Yes' : 'No' }}
+                  </div>
                 </div>
-                <div class="field">
-                  <label for="diag2">Second Diagnosis (Rank 2)</label>
-                  <Dropdown id="diag2" v-model="preAiFormData.diagnosisRank2Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 2" required filter class="w-full" />
-                </div>
-                <div class="field">
-                  <label for="diag3">Third Diagnosis (Rank 3)</label>
-                  <Dropdown id="diag3" v-model="preAiFormData.diagnosisRank3Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Diagnosis 3" required filter class="w-full" />
-                </div>
-
-                <div class="field">
-                  <label for="confidence">Confidence in Top Diagnosis (1=Low, 5=High)</label>
-                  <SelectButton id="confidence" v-model="preAiFormData.confidenceScore" :options="scoreOptions" 
-                    optionLabel="label" dataKey="value" class="w-full" />
-                </div>
-
-                <div class="field">
-                  <label for="management">Management Strategy</label>
-                  <Dropdown id="management" v-model="preAiFormData.managementStrategyId" :options="managementStrategies" optionLabel="name" optionValue="id" placeholder="Select a strategy" required class="w-full" />
-                </div>
-                <div class="field">
-                  <label for="managementNotes">Management Notes (Optional)</label>
-                  <Textarea id="managementNotes" v-model="preAiFormData.managementNotes" rows="3" class="w-full" />
-                </div>
-
-                <div class="field">
-                  <label for="certainty">Certainty of Management Plan (1=Low, 5=High)</label>
-                  <SelectButton id="certainty" v-model="preAiFormData.certaintyScore" :options="scoreOptions" 
-                    optionLabel="label" dataKey="value" class="w-full" />
-                </div>
-
-                <Button type="submit" label="Submit Pre-AI & View AI" icon="pi pi-arrow-right" iconPos="right" :loading="submitting" />
               </div>
-            </form>
+              
+              <div v-if="metadata.other_notes" class="col-12">
+                <div class="surface-card border-round p-3">
+                  <div class="text-500 font-medium mb-2">Additional Notes</div>
+                  <div class="text-900">{{ metadata.other_notes }}</div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="flex align-items-center justify-content-center p-4">
+              <i class="pi pi-spin pi-spinner mr-2"></i>
+              <span>Loading metadata...</span>
+            </div>
+          </template>
+        </Card>
 
-            <form v-else @submit.prevent="handlePostAiSubmit">
-              <div class="p-fluid space-y-4">
-                <h3 class="font-semibold text-lg mb-2">Your Updated Assessment (Post-AI)</h3>
-                <div class="field">
-                  <label for="postDiag1">Updated Top Diagnosis (Rank 1)</label>
-                  <Dropdown id="postDiag1" v-model="postAiFormData.diagnosisRank1Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 1" required filter class="w-full" />
-                </div>
-                <div class="field">
-                  <label for="postDiag2">Updated Second Diagnosis (Rank 2)</label>
-                  <Dropdown id="postDiag2" v-model="postAiFormData.diagnosisRank2Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 2" required filter class="w-full" />
-                </div>
-                <div class="field">
-                  <label for="postDiag3">Updated Third Diagnosis (Rank 3)</label>
-                  <Dropdown id="postDiag3" v-model="postAiFormData.diagnosisRank3Id" :options="diagnosisTerms" optionLabel="name" optionValue="id" placeholder="Select Updated Diagnosis 3" required filter class="w-full" />
-                </div>
+        <!-- AI Predictions Section -->
+        <Card v-if="isPostAiPhase" class="mb-4">
+          <template #title>
+            <span class="text-xl font-bold flex align-items-center">
+              <i class="pi pi-star mr-2"></i> AI Predictions
+            </span>
+          </template>
+          <template #content>
+            <DataTable :value="aiOutputs" 
+                      class="p-datatable-sm" 
+                      v-if="aiOutputs.length > 0"
+                      :showGridlines="true"
+                      stripedRows>
+              <Column field="rank" header="Rank" style="width: 15%">
+                <template #body="slotProps">
+                  <Tag :value="'#' + slotProps.data.rank" severity="info" />
+                </template>
+              </Column>
+              <Column field="prediction.name" header="Diagnosis" />
+              <Column field="confidence_score" header="Confidence">
+                <template #body="slotProps">
+                  <div class="flex flex-column">
+                    <ProgressBar :value="(slotProps.data.confidence_score * 100)"
+                               :class="{'bg-primary': slotProps.data.confidence_score >= 0.7,
+                                       'bg-warning': slotProps.data.confidence_score >= 0.4 && slotProps.data.confidence_score < 0.7,
+                                       'bg-danger': slotProps.data.confidence_score < 0.4}"
+                               class="mb-2" />
+                    <small class="text-600">{{ Math.round(slotProps.data.confidence_score * 100) }}%</small>
+                  </div>
+                </template>
+              </Column>
+            </DataTable>
+            <Message v-else severity="info" text="No AI predictions available for this case." />
+          </template>
+        </Card>
+      </div>
 
-                <div class="field">
-                  <label for="postConfidence">Updated Confidence in Top Diagnosis (1=Low, 5=High)</label>
-                  <SelectButton id="postConfidence" v-model="postAiFormData.confidenceScore" :options="scoreOptions" 
-                    optionLabel="label" dataKey="value" class="w-full" />
-                </div>
+      <!-- Right Column - Assessment Form -->
+      <div class="col-12 lg:col-7">
+        <Card>
+          <template #title>
+            <span class="text-xl font-bold flex align-items-center">
+              <i :class="isPostAiPhase ? 'pi pi-check-circle' : 'pi pi-user-edit'" class="mr-2"></i>
+              {{ isPostAiPhase ? 'Post-AI Assessment' : 'Pre-AI Assessment' }}
+            </span>
+          </template>
+          <template #content>
+            <!-- Pre-AI Assessment Form -->
+            <form v-if="!isPostAiPhase" @submit.prevent="handlePreAiSubmit" class="p-fluid">
+              <div class="grid">
+                <div class="col-12">
+                  <div class="card">
+                    <h3 class="text-lg font-medium mb-3">
+                      <i class="pi pi-list mr-2"></i>Diagnosis Ranking
+                    </h3>
+                    
+                    <div class="field mb-4">
+                      <label for="diag1" class="text-600">Primary Diagnosis (Rank 1)</label>
+                      <Dropdown id="diag1" 
+                              v-model="preAiFormData.diagnosisRank1Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select primary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank1Id}"
+                              filter
+                              v-tooltip.top="'Select your primary diagnosis'"
+                              required />
+                    </div>
 
-                <div class="field">
-                  <label for="postManagement">Updated Management Strategy</label>
-                  <Dropdown id="postManagement" v-model="postAiFormData.managementStrategyId" :options="managementStrategies" optionLabel="name" optionValue="id" placeholder="Select updated strategy" required class="w-full" />
-                </div>
-                <div class="field">
-                  <label for="postManagementNotes">Updated Management Notes (Optional)</label>
-                  <Textarea id="postManagementNotes" v-model="postAiFormData.managementNotes" rows="3" class="w-full" />
-                </div>
+                    <div class="field mb-4">
+                      <label for="diag2" class="text-600">Secondary Diagnosis (Rank 2)</label>
+                      <Dropdown id="diag2"
+                              v-model="preAiFormData.diagnosisRank2Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select secondary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank2Id}"
+                              filter
+                              v-tooltip.top="'Select your secondary diagnosis'"
+                              required />
+                    </div>
 
-                <div class="field">
-                  <label for="postCertainty">Updated Certainty of Management Plan (1=Low, 5=High)</label>
-                  <SelectButton id="postCertainty" v-model="postAiFormData.certaintyScore" :options="scoreOptions" 
-                    optionLabel="label" dataKey="value" class="w-full" />
+                    <div class="field mb-4">
+                      <label for="diag3" class="text-600">Tertiary Diagnosis (Rank 3)</label>
+                      <Dropdown id="diag3"
+                              v-model="preAiFormData.diagnosisRank3Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select tertiary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !preAiFormData.diagnosisRank3Id}"
+                              filter
+                              v-tooltip.top="'Select your tertiary diagnosis'"
+                              required />
+                    </div>
+                  </div>
                 </div>
 
                 <Divider />
 
-                <h4 class="font-semibold text-md mb-2">AI Impact Assessment</h4>
-                <div class="field">
-                  <label>Did the AI suggestions change your primary diagnosis?</label>
-                  <SelectButton v-model="postAiFormData.changeDiagnosis" :options="changeOptions" optionLabel="label" optionValue="value" required />
-                </div>
-                <div class="field">
-                  <label>Did the AI suggestions change your management plan?</label>
-                  <SelectButton v-model="postAiFormData.changeManagement" :options="changeOptions" optionLabel="label" optionValue="value" required />
-                </div>
-                <div class="field">
-                  <label for="aiUsefulness">How useful were the AI suggestions?</label>
-                  <Dropdown id="aiUsefulness" v-model="postAiFormData.aiUsefulness" :options="aiUsefulnessOptions" optionLabel="label" optionValue="value" placeholder="Select usefulness" required class="w-full" />
+                <div class="col-12">
+                  <div class="card">
+                    <h3 class="text-lg font-medium mb-3">
+                      <i class="pi pi-chart-line mr-2"></i>Confidence Assessment
+                    </h3>
+                    
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Confidence in Primary Diagnosis</label>
+                      <div class="flex align-items-center gap-3">
+                        <SelectButton v-model="preAiFormData.confidenceScore"
+                                    :options="scoreOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    v-tooltip.top="'1=Low confidence, 5=High confidence'" />
+                        <span class="text-sm text-600">{{ getConfidenceLabel(preAiFormData.confidenceScore) }}</span>
+                      </div>
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="management" class="text-600">Management Strategy</label>
+                      <Dropdown id="management"
+                              v-model="preAiFormData.managementStrategyId"
+                              :options="managementStrategies"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select management strategy"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !preAiFormData.managementStrategyId}"
+                              v-tooltip.top="'Choose the most appropriate management strategy'"
+                              required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="managementNotes" class="text-600">Management Notes</label>
+                      <Textarea id="managementNotes"
+                              v-model="preAiFormData.managementNotes"
+                              rows="3"
+                              autoResize
+                              placeholder="Enter any additional notes about the management plan" />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Management Plan Certainty</label>
+                      <div class="flex align-items-center gap-3">
+                        <SelectButton v-model="preAiFormData.certaintyScore"
+                                    :options="scoreOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    v-tooltip.top="'1=Low certainty, 5=High certainty'" />
+                        <span class="text-sm text-600">{{ getCertaintyLabel(preAiFormData.certaintyScore) }}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  :label="submitting ? 'Submitting...' : 'Submit Assessment'" 
-                  icon="pi pi-medal" 
-                  iconPos="right" 
-                  :loading="submitting" 
-                  class="p-button-success"
-                />
+                <div class="col-12">
+                  <Button type="submit"
+                          :label="submitting ? 'Submitting...' : 'Submit & View AI Suggestions'"
+                          :loading="submitting"
+                          severity="primary"
+                          class="w-full"
+                          :disabled="submitting" />
+                </div>
               </div>
             </form>
-          </div>
-        </div>
-      </template>
-    </Card>
+
+            <!-- Post-AI Assessment Form -->
+            <form v-else @submit.prevent="handlePostAiSubmit" class="p-fluid">
+              <div class="grid">
+                <div class="col-12">
+                  <div class="card">
+                    <h3 class="text-lg font-medium mb-3">
+                      <i class="pi pi-list mr-2"></i>Updated Diagnosis Ranking
+                    </h3>
+                    
+                    <div class="field mb-4">
+                      <label for="postDiag1" class="text-600">Updated Primary Diagnosis (Rank 1)</label>
+                      <Dropdown id="postDiag1"
+                              v-model="postAiFormData.diagnosisRank1Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select updated primary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank1Id}"
+                              filter
+                              required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="postDiag2" class="text-600">Updated Secondary Diagnosis (Rank 2)</label>
+                      <Dropdown id="postDiag2"
+                              v-model="postAiFormData.diagnosisRank2Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select updated secondary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank2Id}"
+                              filter
+                              required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="postDiag3" class="text-600">Updated Tertiary Diagnosis (Rank 3)</label>
+                      <Dropdown id="postDiag3"
+                              v-model="postAiFormData.diagnosisRank3Id"
+                              :options="diagnosisTerms"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select updated tertiary diagnosis"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !postAiFormData.diagnosisRank3Id}"
+                              filter
+                              required />
+                    </div>
+                  </div>
+                </div>
+
+                <Divider />
+
+                <div class="col-12">
+                  <div class="card">
+                    <h3 class="text-lg font-medium mb-3">
+                      <i class="pi pi-chart-line mr-2"></i>Updated Confidence Assessment
+                    </h3>
+                    
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Updated Confidence in Primary Diagnosis</label>
+                      <div class="flex align-items-center gap-3">
+                        <SelectButton v-model="postAiFormData.confidenceScore"
+                                    :options="scoreOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    v-tooltip.top="'1=Low confidence, 5=High confidence'" />
+                        <span class="text-sm text-600">{{ getConfidenceLabel(postAiFormData.confidenceScore) }}</span>
+                      </div>
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="postManagement" class="text-600">Updated Management Strategy</label>
+                      <Dropdown id="postManagement"
+                              v-model="postAiFormData.managementStrategyId"
+                              :options="managementStrategies"
+                              optionLabel="name"
+                              optionValue="id"
+                              placeholder="Select updated management strategy"
+                              class="w-full"
+                              :class="{'p-invalid': submitted && !postAiFormData.managementStrategyId}"
+                              required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="postManagementNotes" class="text-600">Updated Management Notes</label>
+                      <Textarea id="postManagementNotes"
+                              v-model="postAiFormData.managementNotes"
+                              rows="3"
+                              autoResize
+                              placeholder="Enter any additional notes about the updated management plan" />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Updated Management Plan Certainty</label>
+                      <div class="flex align-items-center gap-3">
+                        <SelectButton v-model="postAiFormData.certaintyScore"
+                                    :options="scoreOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    v-tooltip.top="'1=Low certainty, 5=High certainty'" />
+                        <span class="text-sm text-600">{{ getCertaintyLabel(postAiFormData.certaintyScore) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Divider />
+
+                <div class="col-12">
+                  <div class="card">
+                    <h3 class="text-lg font-medium mb-3">
+                      <i class="pi pi-star mr-2"></i>AI Impact Assessment
+                    </h3>
+                    
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Did AI suggestions change your primary diagnosis?</label>
+                      <SelectButton v-model="postAiFormData.changeDiagnosis"
+                                  :options="changeOptions"
+                                  optionLabel="label"
+                                  optionValue="value"
+                                  required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label class="text-600 block mb-2">Did AI suggestions change your management plan?</label>
+                      <SelectButton v-model="postAiFormData.changeManagement"
+                                  :options="changeOptions"
+                                  optionLabel="label"
+                                  optionValue="value"
+                                  required />
+                    </div>
+
+                    <div class="field mb-4">
+                      <label for="aiUsefulness" class="text-600">How useful were the AI suggestions?</label>
+                      <Dropdown id="aiUsefulness"
+                              v-model="postAiFormData.aiUsefulness"
+                              :options="aiUsefulnessOptions"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select usefulness level"
+                              class="w-full"
+                              required />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <Button type="submit"
+                          :label="submitting ? 'Submitting...' : 'Complete Assessment'"
+                          icon="pi pi-check-circle"
+                          :loading="submitting"
+                          severity="success"
+                          class="w-full"
+                          :disabled="submitting" />
+                </div>
+              </div>
+            </form>
+          </template>
+        </Card>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.case-page {
-  max-width: 1400px;
-  margin: auto;
+.case-container {
+  max-width: 1600px;
+  margin: 0 auto;
 }
-.field label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
+
+:deep(.p-card) {
+  background: var(--surface-card);
+  border-radius: var(--border-radius);
 }
-.p-slider {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+
+:deep(.p-steps) {
+  background: var(--surface-card);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
 }
+
+:deep(.p-datatable) {
+  background: var(--surface-card);
+}
+
+:deep(.p-selectbutton) {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 :deep(.p-selectbutton .p-button) {
-  margin-right: 0.5rem;
+  flex: 1;
 }
-:deep(.p-selectbutton .p-button:last-child) {
-  margin-right: 0;
+
+:deep(.p-dropdown), :deep(.p-selectbutton) {
+  width: 100%;
 }
-:deep(.p-datatable .p-datatable-thead > tr > th) {
-  background-color: var(--p-surface-100);
-  font-weight: bold;
+
+:deep(.p-progressbar) {
+  height: 0.5rem;
 }
-:deep(.p-datatable .p-datatable-tbody > tr > td) {
-  padding: 0.5rem 1rem;
-}
-.metadata-item {
-  padding: 0.5rem;
-  background-color: var(--surface-ground);
-  border-radius: 4px;
+
+@media screen and (max-width: 960px) {
+  .case-container {
+    padding: 1rem;
+  }
 }
 </style>

@@ -4,12 +4,7 @@ Objective: Establish a cohesive visual identity across the application.
 
 Action: Select and apply a PrimeVue theme that aligns with your desired aesthetic. For a modern look, consider the Aura theme.
 
-Implementation:
-
-javascript
-Copy
-Edit
-  import 'primevue/resources/themes/aura-light-green/theme.css';
+Use '@primevue/themes/aura';
 Customization: Utilize the PrimeVue Theme Designer to tailor the theme to your brand's color palette and typography.
 
 Step 2: Enhance Visual Hierarchy

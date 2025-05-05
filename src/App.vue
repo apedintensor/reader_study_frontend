@@ -10,7 +10,11 @@ const showLayout = computed(() => route.meta.requiresAuth)
 </script>
 
 <template>
-  <MainLayout v-if="showLayout" />
+  <template v-if="showLayout">
+    <MainLayout>
+      <router-view />
+    </MainLayout>
+  </template>
   <router-view v-else />
 </template>
 

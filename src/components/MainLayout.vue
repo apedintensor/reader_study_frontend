@@ -1,75 +1,73 @@
 <template>
-  <div>
-    <Menubar :model="items" />
-    <main>
-      <router-view />
-    </main>
+  <div class="layout-wrapper">
+    <Menubar class="layout-topbar">
+      <template #start>
+        <router-link to="/" class="flex align-items-center no-underline">
+          <span class="text-xl font-bold text-primary">Reader Study</span>
+        </router-link>
+      </template>
+
+      <template #end>
+        <div class="flex align-items-center gap-3" v-if="isAuthenticated">
+          <span class="text-sm">
+            <i class="pi pi-user mr-2"></i>{{ userEmail }}
+          </span>
+          <Button icon="pi pi-sign-out" 
+                  severity="secondary"
+                  text
+                  v-tooltip.left="'Logout'"
+                  @click="handleLogout" />
+        </div>
+      </template>
+    </Menubar>
+
+    <div class="layout-main p-4">
+      <slot></slot>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'; // Import watch
-import { useRouter } from 'vue-router'; // Import useRouter
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '../stores/userStore';
 import Menubar from 'primevue/menubar';
-import { useUserStore } from '../stores/userStore'; // Import user store
+import Button from 'primevue/button';
 
-const router = useRouter(); // Get router instance
-const userStore = useUserStore(); // Get user store instance
+const router = useRouter();
+const userStore = useUserStore();
 
-// Define menu items reactively
-const items = ref();
+const isAuthenticated = computed(() => userStore.isAuthenticated);
+const userEmail = computed(() => userStore.user?.email);
 
-// Function to update menu items based on auth state
-const updateMenuItems = () => {
-  if (userStore.isAuthenticated) {
-    items.value = [
-      {
-        label: 'Dashboard',
-        icon: 'pi pi-fw pi-home',
-        command: () => {
-          router.push('/'); // Navigate to dashboard
-        }
-      },
-      // Add other authenticated navigation items here
-      {
-        label: 'Logout',
-        icon: 'pi pi-fw pi-power-off',
-        command: () => {
-          userStore.logout(); // Call logout action from store
-          router.push('/login'); // Redirect to login page
-        }
-      }
-    ];
-  } else {
-    // Menu items for unauthenticated users (e.g., only Login/Signup)
-    items.value = [
-       {
-        label: 'Login',
-        icon: 'pi pi-fw pi-sign-in',
-        command: () => { router.push('/login'); }
-      },
-      {
-        label: 'Sign Up',
-        icon: 'pi pi-fw pi-user-plus',
-        command: () => { router.push('/signup'); }
-      }
-      // Add other public navigation items here if needed
-    ];
-  }
+const handleLogout = async () => {
+  await userStore.logout();
+  router.push('/login');
 };
-
-// Watch for changes in authentication state and update menu
-watch(() => userStore.isAuthenticated, updateMenuItems, { immediate: true });
-
 </script>
 
 <style scoped>
-main {
-  padding: 1rem;
+.layout-wrapper {
+  min-height: 100vh;
+  background: var(--surface-ground);
 }
-/* Ensure Menubar is visible and styled */
+
+.layout-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  padding: 0.5rem 2rem;
+  background: var(--surface-card);
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.layout-main {
+  padding-bottom: 2rem;
+}
+
 :deep(.p-menubar) {
-    border-radius: 0; /* Optional: remove border radius */
-    border-bottom: 1px solid var(--p-surface-border);
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 </style>

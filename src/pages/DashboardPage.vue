@@ -1,50 +1,92 @@
 <template>
-  <div class="dashboard-page p-4">
+  <div class="dashboard-container p-4">
     <Toast />
+    
+    <!-- Progress Overview -->
     <Card class="mb-4">
-      <template #title>Reader Study Dashboard</template>
+      <template #title>
+        <span class="text-xl font-bold flex align-items-center">
+          <i class="pi pi-chart-bar mr-2"></i> Study Progress
+        </span>
+      </template>
       <template #content>
-        <p v-if="userStore.user">Welcome, {{ userStore.user.email }}!</p>
-        <div class="flex justify-content-between align-items-center mb-4">
-          <div>
-            <span class="font-bold">Progress: </span>
-            {{ completedCount }} / {{ totalCases }} cases completed
+        <div class="grid">
+          <!-- Stats Cards -->
+          <div class="col-12 md:col-4">
+            <div class="surface-card border-round p-4 h-full">
+              <div class="text-600 mb-2">Total Cases</div>
+              <div class="text-primary text-4xl font-bold mb-2">{{ cases.length }}</div>
+              <div class="text-sm text-700">All available cases</div>
+            </div>
           </div>
-          <Button label="Start Next Case" icon="pi pi-arrow-right" @click="startNextCase" :disabled="!hasIncompleteCases" />
+          
+          <div class="col-12 md:col-4">
+            <div class="surface-card border-round p-4 h-full">
+              <div class="text-600 mb-2">Completed</div>
+              <div class="text-green-500 text-4xl font-bold mb-2">{{ completedCases.length }}</div>
+              <div class="text-sm text-700">Successfully assessed cases</div>
+            </div>
+          </div>
+          
+          <div class="col-12 md:col-4">
+            <div class="surface-card border-round p-4 h-full">
+              <div class="text-600 mb-2">Remaining</div>
+              <div class="text-orange-500 text-4xl font-bold mb-2">{{ cases.length - completedCases.length }}</div>
+              <div class="text-sm text-700">Cases pending assessment</div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="col-12 mt-4">
+            <div class="surface-card border-round p-4">
+              <div class="flex justify-content-between align-items-center mb-3">
+                <span class="text-600">Overall Completion</span>
+                <Tag :value="Math.round(completionPercentage) + '%'" 
+                     :severity="completionPercentage === 100 ? 'success' : 'info'" />
+              </div>
+              <ProgressBar :value="completionPercentage" class="h-2rem" />
+            </div>
+          </div>
         </div>
       </template>
     </Card>
 
+    <!-- Cases List -->
     <Card>
-      <template #title>Case Progress</template>
+      <template #title>
+        <span class="text-xl font-bold flex align-items-center">
+          <i class="pi pi-list mr-2"></i> Available Cases
+        </span>
+      </template>
       <template #content>
-        <DataTable :value="casesWithProgress" :paginator="true" :rows="10" class="mb-4"
-          :loading="loading" stripedRows responsiveLayout="scroll">
-          <Column field="id" header="Case ID" sortable>
+        <DataTable :value="cases" 
+                  :loading="loading" 
+                  dataKey="id"
+                  stripedRows
+                  class="p-datatable-sm"
+                  responsiveLayout="scroll"
+                  :rowClass="(data) => ({'cursor-pointer': true})">
+          <Column field="id" header="Case ID" style="width: 15%">
             <template #body="slotProps">
-              <Button :label="'Case ' + slotProps.data.id" 
-                     link 
-                     @click="navigateToCase(slotProps.data.id)"
-                     :disabled="!canAccessCase(slotProps.data)" />
+              <span class="font-semibold">#{{ slotProps.data.id }}</span>
             </template>
           </Column>
-          <Column field="preAiStatus" header="Pre-AI Status" sortable>
+          
+          <Column header="Status" style="width: 25%">
             <template #body="slotProps">
-              <Tag :severity="getPreAiSeverity(slotProps.data)" :value="getPreAiLabel(slotProps.data)" />
+              <Tag :value="getStatusLabel(slotProps.data)" 
+                   :severity="getStatusSeverity(slotProps.data)"
+                   :icon="getStatusIcon(slotProps.data)" />
             </template>
           </Column>
-          <Column field="postAiStatus" header="Post-AI Status" sortable>
+          
+          <Column style="width: 20%">
             <template #body="slotProps">
-              <Tag :severity="getPostAiSeverity(slotProps.data)" :value="getPostAiLabel(slotProps.data)" />
-            </template>
-          </Column>
-          <Column header="Actions">
-            <template #body="slotProps">
-              <Button icon="pi pi-arrow-right" 
-                     rounded 
-                     @click="navigateToCase(slotProps.data.id)"
-                     :disabled="!canAccessCase(slotProps.data)"
-                     tooltip="Go to case" />
+              <Button :icon="getStatusIcon(slotProps.data)"
+                     :label="getActionLabel(slotProps.data)"
+                     :severity="getStatusSeverity(slotProps.data)"
+                     size="small"
+                     @click="navigateToCase(slotProps.data)" />
             </template>
           </Column>
         </DataTable>
@@ -54,91 +96,96 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
 import { useCaseStore } from '../stores/caseStore';
 import Card from 'primevue/card';
-import Button from 'primevue/button';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import ProgressBar from 'primevue/progressbar';
 import Toast from 'primevue/toast';
-import { useToast } from 'primevue/usetoast';
 
 const router = useRouter();
 const userStore = useUserStore();
 const caseStore = useCaseStore();
-const toast = useToast();
+
 const loading = ref(true);
-
-const casesWithProgress = computed(() => {
-  return caseStore.cases.map(c => ({
-    ...c,
-    progress: caseStore.getCaseProgress(c.id)
-  }));
-});
-
-const totalCases = computed(() => caseStore.totalCases);
-const completedCount = computed(() => caseStore.completedCases.length);
-const hasIncompleteCases = computed(() => caseStore.getIncompleteCases().length > 0);
-
-function getPreAiSeverity(caseData: any) {
-  return caseData.progress.preCompleted ? 'success' : 'warning';
-}
-
-function getPreAiLabel(caseData: any) {
-  return caseData.progress.preCompleted ? 'Completed' : 'Pending';
-}
-
-function getPostAiSeverity(caseData: any) {
-  if (!caseData.progress.preCompleted) return 'info';
-  return caseData.progress.postCompleted ? 'success' : 'warning';
-}
-
-function getPostAiLabel(caseData: any) {
-  if (!caseData.progress.preCompleted) return 'Locked';
-  return caseData.progress.postCompleted ? 'Completed' : 'Pending';
-}
-
-function canAccessCase(caseData: any) {
-  // Always allow access to pre-AI phase
-  if (!caseData.progress.preCompleted) return true;
-  // Only allow post-AI access if pre-AI is completed
-  return caseData.progress.preCompleted;
-}
-
-async function startNextCase() {
-  const nextCase = caseStore.getNextIncompleteCase();
-  if (nextCase) {
-    router.push(`/case/${nextCase.id}`);
-  } else {
-    toast.add({
-      severity: 'info',
-      summary: 'All Cases Completed',
-      detail: 'You have completed all available cases.',
-      life: 3000
-    });
-    router.push('/complete');
-  }
-}
-
-function navigateToCase(caseId: number) {
-  router.push(`/case/${caseId}`);
-}
+const cases = computed(() => caseStore.cases);
+const completedCases = computed(() => cases.value.filter(c => {
+  const progress = caseStore.getCaseProgress(c.id);
+  return progress.postCompleted;
+}));
+const completionPercentage = computed(() => 
+  cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0
+);
 
 onMounted(async () => {
-  if (!userStore.user) {
-    await userStore.fetchCurrentUser();
+  if (!userStore.isAuthenticated) {
+    router.push('/login');
+    return;
   }
-  await caseStore.loadCases();
-  loading.value = false;
+  
+  try {
+    await caseStore.loadCases(); // Changed from fetchCases to loadCases
+  } catch (error) {
+    console.error('Failed to fetch cases:', error);
+  } finally {
+    loading.value = false;
+  }
 });
+
+const navigateToCase = (caseData: any) => {
+  router.push(`/case/${caseData.id}`);
+};
+
+const getStatusSeverity = (caseData: any) => {
+  const progress = caseStore.getCaseProgress(caseData.id);
+  if (progress.postCompleted) return 'success';
+  if (progress.preCompleted) return 'warning';
+  return 'info';
+};
+
+const getStatusLabel = (caseData: any) => {
+  const progress = caseStore.getCaseProgress(caseData.id);
+  if (progress.postCompleted) return 'Completed';
+  if (progress.preCompleted) return 'Post-AI Pending';
+  return 'Not Started';
+};
+
+const getStatusIcon = (caseData: any) => {
+  const progress = caseStore.getCaseProgress(caseData.id);
+  if (progress.postCompleted) return 'pi pi-check-circle';
+  if (progress.preCompleted) return 'pi pi-sync';
+  return 'pi pi-play';
+};
+
+const getActionLabel = (caseData: any) => {
+  const progress = caseStore.getCaseProgress(caseData.id);
+  if (progress.postCompleted) return 'Review';
+  if (progress.preCompleted) return 'Continue';
+  return 'Start';
+};
 </script>
 
 <style scoped>
-.dashboard-page {
+.dashboard-container {
   max-width: 1200px;
-  margin: auto;
+  margin: 0 auto;
+}
+
+:deep(.cursor-pointer) {
+  cursor: pointer;
+}
+
+:deep(.p-progressbar) {
+  background: var(--surface-ground);
+}
+
+:deep(.p-card) {
+  background: var(--surface-card);
+  border-radius: var(--border-radius);
 }
 </style>
