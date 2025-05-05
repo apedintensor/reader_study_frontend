@@ -1,0 +1,56 @@
+Update `CasePage.vue` to support the **Post-AI phase** after the user completes the Pre-AI assessment.
+
+---
+
+🧠 Logic:
+- Detect if the current case has already been completed Pre-AI (from `caseStore`)
+- If so, render the Post-AI section:
+  - Call `/ai_outputs/case/{id}`
+  - Display the Top 5 predictions using PrimeVue Chart or ProgressBars
+    - Each should show the `prediction.name`, `rank`, and `confidence_score`
+
+---
+
+📋 Then render the **same form again**, but with:
+- Labeled inputs like “Updated Diagnosis 1”
+- “Updated Confidence”, “Updated Management”, etc.
+
+Use the same components:
+- 3 InputText fields
+- 2 sliders (confidence + certainty)
+- Dropdown for updated management strategy
+- Optional free-text
+
+---
+
+✅ On “Next” button click:
+- Submit `AssessmentCreate` to `/assessments/` with:
+```js
+{
+  is_post_ai: true,
+  user_id: <from store>,
+  case_id: <from route>,
+  change_diagnosis_after_ai: true/false,
+  change_management_after_ai: true/false,
+  ai_usefulness: "very", "somewhat", "no", etc.
+  confidence_level_top1: <slider>,
+  management_confidence: <slider>,
+  certainty_level: <slider>
+}
+Submit 3 updated diagnoses to /diagnoses/ using assessment_id
+
+Submit updated management to /management_plans/
+
+🧭 After submission:
+
+Call caseStore.markCaseComplete(caseId)
+
+Navigate to next case /case/:nextId or to /complete if all done
+
+💡 Notes:
+
+Show both Pre-AI and Post-AI forms side-by-side or toggle with a tab
+
+Cache Post-AI form data in localStorage before submitting
+
+Add a transition animation between phases for better UX

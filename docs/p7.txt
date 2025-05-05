@@ -1,0 +1,92 @@
+🧪 Set up Cypress end-to-end testing for the reader study app.
+
+1️⃣ Scaffold Cypress:
+- If not yet initialized, run `npx cypress open`
+- Create test files in `cypress/e2e/`:
+  - `auth.cy.js` – signup and login tests
+  - `caseFlow.cy.js` – pre- and post-AI flow
+  - `resume.cy.js` – resume from incomplete progress
+  - `navigation.cy.js` – jump to any case
+
+---
+
+2️⃣ Add mock data generators in `cypress/support/`:
+
+Create reusable JS functions to generate:
+
+✅ **Users** (mock signup):
+```js
+{
+  email: "testuser@example.com",
+  password: "password123",
+  age_bracket: "30–39",
+  gender: "Female",
+  years_experience: 5,
+  years_derm_experience: 1,
+  role_id: 1 // GP
+}
+
+
+Cases (10 samples):
+{
+  id: 101,
+  ground_truth_diagnosis_id: 5,
+  typical_diagnosis: true,
+  images: [{ image_url: "https://example.com/img1.jpg" }],
+  case_metadata_relation: {
+    age: 42,
+    gender: "Male",
+    fever_history: false,
+    psoriasis_history: true
+  },
+  ai_outputs: [
+    {
+      rank: 1,
+      confidence_score: 0.87,
+      prediction: { name: "Eczema" }
+    },
+    ...
+  ]
+}
+
+Diagnosis Terms and Management Strategies: hardcode a few to test with
+
+3️⃣ Create test scenario:
+
+📘 Test: “User does 3 pre-AI cases, logs out, and returns”
+
+Register user
+
+Fill 3 pre-AI assessments via form
+
+Simulate logout (clear token)
+
+Log back in and verify resume at 4th case
+
+📘 Other test cases:
+
+Submit post-AI for a single case
+
+Skip a case and revisit it
+
+Submit all cases, then check /complete summary
+
+4️⃣ BONUS: Add Completion Summary page /complete
+
+Show:
+
+Total cases completed (pre/post)
+
+Link to download JSON or CSV of responses (optional)
+
+Use PrimeVue Summary Panel + Button for export
+
+📁 Optionally: Create Admin Dashboard page at /admin:
+
+Show table of all users and responses (from /assessments/ or /users/)
+
+Requires basic role-based guard (use is_superuser flag)
+
+🎨 BONUS: Apply PrimeVue theme customization (e.g., change colors in main.js or theme.css)
+
+✅ Make all tests headless-compatible (npx cypress run)

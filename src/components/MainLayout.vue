@@ -1,10 +1,6 @@
 <template>
   <div>
-    <!-- Add a PrimeVue Topbar/Menubar component here later if needed -->
-    <header>
-      <!-- Placeholder for top navigation -->
-      <p>Top Bar Placeholder</p>
-    </header>
+    <Menubar :model="items" />
     <main>
       <router-view />
     </main>
@@ -12,16 +8,30 @@
 </template>
 
 <script setup lang="ts">
-// No script needed for now
+import { ref } from 'vue';
+import Menubar from 'primevue/menubar';
+
+// Placeholder items for the menubar
+const items = ref([
+  {
+    label: 'Dashboard',
+    icon: 'pi pi-fw pi-home',
+    command: () => { /* navigate to dashboard */ }
+  },
+  {
+    label: 'Logout',
+    icon: 'pi pi-fw pi-power-off',
+    command: () => { /* handle logout */ }
+  }
+]);
 </script>
 
 <style scoped>
-header {
-  background-color: #f0f0f0;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
 main {
   padding: 1rem;
+}
+/* Remove default header styles if they exist */
+header {
+  display: none;
 }
 </style>

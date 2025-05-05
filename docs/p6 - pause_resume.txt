@@ -1,0 +1,60 @@
+Enhance the caseStore and UI to support session resume and case navigation.
+
+---
+
+📦 In `caseStore.js`:
+- Track progress state for each case:
+```js
+{
+  caseId: Number,
+  preCompleted: Boolean,
+  postCompleted: Boolean
+}
+Persist this progress map to localStorage after each update
+
+On app startup, load from localStorage via loadProgressFromCache()
+
+Expose a method getIncompleteCases() that returns next available case
+
+📄 In DashboardPage.vue:
+
+Show a PrimeVue DataTable or PanelGrid with:
+
+Case ID
+
+Pre-AI status ✅/❌
+
+Post-AI status ✅/❌
+
+Include:
+
+A “Start/Resume” button → goes to the next incomplete case
+
+A dropdown or sidebar with all case IDs (or labels) → lets user jump to any case via /case/:id
+
+📚 UI Suggestions:
+
+Use PrimeVue Sidebar or PanelMenu for navigation
+
+Highlight completed vs. pending cases with colored icons or status labels
+
+Disable jumping to Post-AI if Pre-AI isn’t completed
+
+🧠 Business Logic:
+
+Resume logic should:
+
+Auto-navigate to the first case where preCompleted === false
+
+If all pre-complete, go to first post-incomplete
+
+If all complete, route to /complete
+
+🛑 Do NOT:
+
+Require sequential answering — users may skip and return later
+
+Overwrite remote data unless user explicitly submits the form
+
+💡 Tip: Show a toast or dialog if user tries to access a post-AI page without finishing pre-AI.
+

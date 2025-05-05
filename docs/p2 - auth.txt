@@ -1,0 +1,44 @@
+Implement JWT-based login and signup pages using PrimeVue components.
+
+📄 In `src/pages/LoginPage.vue`:
+- Add form with PrimeVue InputText for email and password
+- Add a login button (p-button)
+- On submit:
+  - POST to `/auth/jwt/login` with `application/x-www-form-urlencoded`
+  - On success, store `access_token` in `localStorage`
+  - Navigate to `/dashboard`
+  - Show a toast if login fails
+
+📄 In `src/pages/SignupPage.vue`:
+- Form inputs:
+  - Email (InputText)
+  - Password (Password input)
+  - Age bracket (Dropdown)
+  - Gender (Dropdown)
+  - Years clinical experience (InputNumber)
+  - Years dermatology experience (InputNumber)
+  - Role (Dropdown from mock roles)
+- Use mock role list from Pinia store or local file:
+```js
+[{ id: 1, name: "GP" }, { id: 2, name: "NP" }, { id: 3, name: "Dermatologist" }]
+
+On submit:
+
+POST to /auth/register/register with JSON payload
+
+On success, redirect to /login
+
+On failure, display error using PrimeVue Toast
+
+🔒 Store the access_token in localStorage on login
+🌐 Use Axios for all API requests
+
+Optional: create a shared PrimeVue form component if logic overlaps.
+
+yaml
+Copy
+Edit
+
+---
+
+Would you like Phase 3 next (Pinia stores for user and case tracking)?

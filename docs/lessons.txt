@@ -1,0 +1,69 @@
+Key Pitfalls to Avoid When Starting a Similar Vue 3 + Vite Project
+Based on our experience setting up your Reader Study Dashboard project with Vue 3, Vite, PrimeVue, and other dependencies, here are the important pitfalls to avoid and lessons learned:
+
+1. PrimeVue 4.x Theme Configuration
+Pitfall: The most significant issue we encountered was with PrimeVue 4.x's theming system, which is completely different from previous versions.
+
+Lessons learned:
+
+PrimeVue 4.x uses a new "Passthrough" (PT) system for theming instead of importing CSS files
+The old import paths like primevue/resources/themes/saga-blue/theme.css no longer work
+The correct approach is to use the PT configuration in the PrimeVue initialization:
+Only import the icons CSS: import 'primeicons/primeicons.css'
+2. TypeScript Type Imports in Vue Router
+Pitfall: We encountered a runtime error when importing TypeScript types directly alongside runtime imports.
+
+Lessons learned:
+
+Use import type for TypeScript type imports to prevent them from being included in the JavaScript bundle:
+This distinction is crucial for avoiding runtime errors in production builds
+3. CSS Variables and Component Styling
+Pitfall: Default styling in components may not be consistent across frameworks, leading to text visibility issues.
+
+Lessons learned:
+
+Define CSS variables at the root level to ensure consistent theming
+Be explicit with text colors, especially when using light/dark themes
+Use Vue 3's :deep() selector to style nested component internals
+Apply global styles to component classes (like .p-card, .p-menubar) for consistent theming
+4. Folder Structure Setup
+Pitfall: Manually creating folders in Windows command line can be problematic with certain commands.
+
+Lessons learned:
+
+Use appropriate commands for your OS when creating directory structures (mkdir works differently across platforms)
+Consider creating the basic folder structure before initializing the project
+Use tools like Visual Studio Code's file explorer to create directories when command line issues arise
+5. Dependency Version Compatibility
+Pitfall: Major version changes in libraries can break existing patterns and documentation examples.
+
+Lessons learned:
+
+Check the latest documentation for your specific version of libraries
+Be wary of tutorials/examples that may be using older versions with different APIs
+Look at package repository issues for common problems others may have encountered
+Consider locking versions in package.json if you need stability
+6. Development Server Configuration
+Pitfall: Port conflicts can occur when the default port is already in use.
+
+Lessons learned:
+
+Configure a fallback port strategy in your Vite config
+Be explicit about port configuration in different environments
+Update your Cypress configuration to match the development server port
+7. Component Imports and Registration
+Pitfall: PrimeVue components need to be explicitly imported in each component where they're used.
+
+Lessons learned:
+
+In Vue 3 with PrimeVue, you need to import each component individually
+This is different from some other component libraries that globally register everything
+This approach results in better tree-shaking but requires more imports
+8. Style Scoping and Global Styles
+Pitfall: Scoped styles in Vue components don't affect child components or imported library components.
+
+Lessons learned:
+
+Use :deep() selector to target nested components within scoped styles
+Place global styles in App.vue or import a dedicated global CSS file
+CSS variables provide a clean way to maintain consistent theming across components
