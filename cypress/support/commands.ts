@@ -32,6 +32,16 @@
 //       drag(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
 //       dismiss(subject: string, options?: Partial<TypeOptions>): Chainable<Element>
 //       visit(originalFn: CommandOriginalFn, url: string, options: Partial<VisitOptions>): Chainable<Element>
+//       selectPrimeVueDropdownOption(selector: string, optionIndex: number): Chainable<void>
 //     }
 //   }
 // }
+
+// Add a custom command for handling PrimeVue dropdowns
+Cypress.Commands.add('selectPrimeVueDropdownOption', (selector: string, optionIndex: number) => {
+  cy.get(selector).parent().click();
+  // Wait for dropdown overlay to be visible
+  cy.get('.p-dropdown-items-wrapper').should('be.visible');
+  // Force click because PrimeVue sometimes has overlay issues in tests
+  cy.get('.p-dropdown-item').eq(optionIndex).click({ force: true });
+});

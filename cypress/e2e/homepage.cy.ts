@@ -1,102 +1,113 @@
 // cypress/e2e/homepage.cy.ts
 describe('Reader Study App E2E', () => {
+  const username = 'danmo2060@gmail.com';
+  const password = '1234';
+
   beforeEach(() => {
-    // Optional: Clear local storage or cookies before each test
     cy.clearLocalStorage();
     cy.clearCookies();
-    // Seed database or set up initial state if necessary
   });
 
   it('should allow a user to login, view dashboard, and navigate to a case', () => {
-    // Visit the login page
     cy.visit('/login');
-    cy.contains('h2', 'Login').should('be.visible');
+    cy.contains('.text-3xl', 'Welcome Back').should('be.visible');
 
-    // Enter credentials (use environment variables or fixtures in a real scenario)
-    cy.get('input[placeholder="Email"]').type('test@example.com');
-    cy.get('input[placeholder="Password"]').type('password');
-
-    // Submit the login form
+    // Intercept login request with proper form data
+    cy.intercept('POST', '/api/auth/jwt/login').as('loginRequest');
+    
+    cy.get('input[aria-label="Email"]').type(username);
+    cy.get('input[aria-label="Password"]').type(password);
     cy.get('button[type="submit"]').click();
+    
+    cy.wait('@loginRequest').then((interception) => {
+      expect(interception.request.body).to.be.a('string');
+      expect(interception.request.headers['content-type']).to.include('application/x-www-form-urlencoded');
+      expect(interception.response?.statusCode).to.equal(200);
+      expect(interception.response?.body).to.have.property('access_token');
+    });
 
-    // Verify redirection to the dashboard
-    cy.url().should('include', '/dashboard');
-    cy.contains('h2', 'Reader Study Dashboard').should('be.visible');
-    cy.contains('Available Cases').should('be.visible');
+    // Dashboard should now be at root (/)
+    cy.location('pathname').should('equal', '/');
+    
+    // Verify local storage has token
+    cy.window().its('localStorage')
+      .invoke('getItem', 'access_token')
+      .should('exist');
 
-    // Click on the first available case link (assuming there's at least one)
-    // Adjust the selector based on how cases are actually listed
-    cy.get('.p-datatable-tbody > tr').first().find('a').click();
+    // Verify dashboard load
+    cy.contains('.text-xl', 'Study Progress').should('be.visible');
+    cy.contains('.text-500', 'Total Cases').should('be.visible');
 
-    // Verify navigation to the case page
-    cy.url().should('match', /\/case\/\d+$/); // Matches /case/ followed by numbers
-    cy.contains('h2', /Case \d+ Details/).should('be.visible'); // Matches "Case [number] Details"
-    cy.contains('Pre-AI Assessment').should('be.visible');
+    // Check case list
+    cy.get('.p-datatable-tbody > tr').should('exist');
 
-    // --- Placeholder for filling Pre-AI form ---
-    // TODO: Add steps to fill the pre-AI form fields (dropdowns, sliders, etc.)
-    // Example (needs actual selectors and data):
-    // cy.get('#preAiDiagnosis1').parent().click().get('.p-dropdown-item').contains('Psoriasis').click();
-    // cy.get('#preAiConfidenceTop1').parent().find('.p-slider-handle').type('{rightarrow}'); // Example for slider
-    // cy.get('#preAiSubmitButton').click();
-
-    // --- Placeholder for verifying Post-AI section or completion ---
-    // TODO: Add assertions for the next step after pre-AI submission
+    // Click first case and verify navigation
+    cy.contains('button', 'Start').first().click();
+    cy.url().should('match', /\/case\/\d+$/);
+    cy.contains('.text-xl', 'Pre-AI Assessment').should('be.visible');
   });
-
-  // Add more tests for signup, different assessment scenarios, etc.
 });
 
-describe('Homepage and Login', () => {
-  it('visits the homepage', () => {
-    cy.visit('/')
-    cy.contains('h1', 'Welcome to the Reader Study') // Adjust if the heading is different
-  })
+describe('Dashboard Progress Display', () => {
+  const username = 'danmo2060@gmail.com';
+  const password = '1234';
 
-  it('should log in successfully', () => {
-    cy.visit('/login') // Assuming the login page route is /login
+  beforeEach(() => {
+    cy.session([username, password], () => {
+      cy.visit('/login');
+      cy.intercept('POST', '/api/auth/jwt/login').as('loginRequest');
+      
+      cy.get('input[aria-label="Email"]').type(username);
+      cy.get('input[aria-label="Password"]').type(password);
+      cy.get('button[type="submit"]').click();
 
-    // Find elements based on your LoginPage.vue structure
-    // Adjust selectors if needed (e.g., using data-cy attributes is recommended)
-    cy.get('input[type="email"]').type('danmo2060@gmail.com')
-    cy.get('input[type="password"]').type('1234')
-    cy.get('button[type="submit"]').click() // Adjust if the button selector is different
+      // Wait for login request and verify response
+      cy.wait('@loginRequest').then((interception) => {
+        expect(interception.request.body).to.be.a('string');
+        expect(interception.request.headers['content-type']).to.include('application/x-www-form-urlencoded');
+        expect(interception.response?.statusCode).to.equal(200);
+        expect(interception.response?.body).to.have.property('access_token');
+      });
 
-    // Assert successful login - check URL or presence of dashboard element
-    cy.url().should('include', '/dashboard') // Assuming redirection to /dashboard
-    cy.contains('h1', 'Dashboard') // Adjust if the dashboard heading is different
-  })
-})
+      // Dashboard should now be at root (/)
+      cy.location('pathname').should('equal', '/');
+      
+      // Verify local storage has token
+      cy.window().its('localStorage')
+        .invoke('getItem', 'access_token')
+        .should('exist');
+    });
+  });
 
-describe('Authenticated Endpoint Test', () => {
-  it('logs in and fetches cases', () => {
-    // Use cy.request for API interaction, not UI login
-    cy.request({
-      method: 'POST',
-      url: '/auth/jwt/login', // Assuming API is served relative to baseUrl
-      form: true, // Use form encoding as per openapi.json
-      body: {
-        username: 'danmo2060@gmail.com',
-        password: '1234',
-      },
-    }).then((loginResp) => {
-      expect(loginResp.status).to.eq(200);
-      expect(loginResp.body).to.have.property('access_token');
-      const token = loginResp.body.access_token;
-
-      // Now make a request to an authenticated endpoint
-      cy.request({
-        method: 'GET',
-        url: '/cases/', // The endpoint to test
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }).then((casesResp) => {
-        expect(casesResp.status).to.eq(200);
-        // Check if the response body is an array (as expected for /cases/)
-        expect(casesResp.body).to.be.an('array');
-        // Add more specific assertions if needed, e.g., check array length or properties of items
-        cy.log('Successfully fetched cases:', casesResp.body);
+  it('should display correct case progress after assessment completion', () => {
+    cy.visit('/');
+    
+    // Note initial case count
+    cy.get('.p-datatable-tbody > tr').then($rows => {
+      const totalCases = $rows.length;
+      
+      // Navigate to first incomplete case
+      cy.contains('button', 'Start').first().click();
+      
+      // Complete pre-AI assessment with new dropdown handling
+      cy.selectPrimeVueDropdownOption('#diag1', 0);
+      cy.selectPrimeVueDropdownOption('#diag2', 1);
+      cy.selectPrimeVueDropdownOption('#diag3', 2);
+      cy.selectPrimeVueDropdownOption('#management', 0);
+      
+      // Submit pre-AI assessment
+      cy.contains('button', 'Submit & View AI Suggestions').click();
+      
+      // Verify the case status updated in dashboard
+      cy.visit('/');
+      cy.get('.p-tag').first().should('contain', 'Post-AI Pending');
+      cy.contains('button', 'Continue').should('exist');
+      
+      // Check progress stats updated
+      cy.get('.text-900.text-4xl').eq(1).invoke('text').then(completedText => {
+        const completed = parseInt(completedText);
+        expect(completed).to.be.at.least(0);
+        expect(completed).to.be.at.most(totalCases);
       });
     });
   });

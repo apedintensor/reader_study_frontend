@@ -7,32 +7,51 @@ const apiClient = axios.create({
   },
 });
 
-// Add a request interceptor to include the token from localStorage
+// Add request logging interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Retrieve the token from localStorage, matching the key used in LoginPage
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Log the request details
+    console.log('API Request:', {
+      method: config.method,
+      url: config.url,
+      headers: config.headers,
+      data: config.data
+    });
     return config;
   },
   (error) => {
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add a response interceptor to handle common errors like 401 Unauthorized
+// Add response logging interceptor
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log the response details
+    console.log('API Response:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Handle unauthorized errors (e.g., token expired)
       console.error("Unauthorized access - 401. Redirecting to login.");
-      // Clear potentially invalid token and user data
       localStorage.removeItem('access_token');
       localStorage.removeItem('userData');
     }
+    // Log the error response
+    console.error('API Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      error: error.response?.data || error.message
+    });
     return Promise.reject(error);
   }
 );

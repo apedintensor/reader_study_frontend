@@ -50,6 +50,8 @@ Edit
       <!-- Right column content -->
     </div>
   </div>
+----------------------------------done above---------------------------------
+
 Step 4: Refine Component Styling
 Objective: Ensure interactive elements are visually distinct and intuitive.
 
@@ -62,11 +64,8 @@ Incorporate icons into buttons for visual cues.
 Utilize Tooltip components to provide additional information on hover.
 
 Example:
-
-vue
-Copy
-Edit
   <Button label="Submit" icon="pi pi-check" class="p-button-success" />
+
 Step 5: Streamline Post-AI Interaction
 Objective: Differentiate AI-generated suggestions from user inputs and facilitate seamless interaction.
 
@@ -78,9 +77,6 @@ Use Tabs or Stepper components to guide users through multi-step processes.
 
 Example:
 
-vue
-Copy
-Edit
   <Accordion>
     <AccordionTab header="AI Suggestions">
       <!-- AI-generated content -->
@@ -89,6 +85,7 @@ Edit
       <!-- User input fields -->
     </AccordionTab>
   </Accordion>
+
 Step 6: Enhance Dashboard Usability
 Objective: Provide users with clear status indicators and progress tracking.
 
@@ -102,9 +99,6 @@ Add hover effects to interactive elements for better feedback.
 
 Example:
 
-vue
-Copy
-Edit
   <Tag value="Pending" severity="warning" />
   <ProgressBar value="70" />
 Step 7: Improve Form Usability

@@ -84,8 +84,7 @@
                       stripedRows
                       class="p-datatable-sm"
                       responsiveLayout="stack"
-                      :rowClass="(data) => ({'cursor-pointer': true})"
-                      @row-click="navigateToCase"
+                      @row-click="(event) => navigateToCase(event.data)"
                       v-model:filters="filters"
                       filterDisplay="menu"
                       :globalFilterFields="['id']">
@@ -127,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
 import { useCaseStore } from '../stores/caseStore';
@@ -148,53 +147,106 @@ const toast = useToast();
 
 const loading = ref(true);
 const cases = computed(() => caseStore.cases);
-const completedCases = computed(() => cases.value.filter(c => {
-  const progress = caseStore.getCaseProgress(c.id);
-  // Ensure we're checking postCompleted status
-  return progress && progress.postCompleted;
-}));
+
+// Update completed cases tracking to be reactive
+const completedCases = computed(() => {
+  return cases.value.filter(c => {
+    const progress = caseStore.getCaseProgress(c.id);
+    return progress?.postCompleted;
+  });
+});
+
+// Add pending cases tracking
+const pendingPostAiCases = computed(() => {
+  return cases.value.filter(c => {
+    const progress = caseStore.getCaseProgress(c.id);
+    return progress?.preCompleted && !progress?.postCompleted;
+  });
+});
 
 const completionPercentage = computed(() => 
   cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0
 );
+
+const loadAndDisplayProgress = async () => {
+  try {
+    const userId = userStore.user?.id;
+    if (!userId) {
+      throw new Error('No user ID available');
+    }
+
+    // First load all cases
+    const casesSuccess = await caseStore.loadCases();
+    if (!casesSuccess) {
+      throw new Error('Failed to load cases');
+    }
+
+    // Then fetch all assessments for the current user to update progress state
+    const assessmentsLoaded = await caseStore.loadAssessmentsAndProgress(userId);
+    if (!assessmentsLoaded) {
+      console.warn('Failed to load assessments, falling back to cached progress');
+    }
+
+    // Log detailed progress state
+    const progressSummary = {
+      total: cases.value.length,
+      completed: completedCases.value.length,
+      pending: pendingPostAiCases.value.length,
+      inProgress: Object.values(caseStore.caseProgress).filter(p => p.preCompleted && !p.postCompleted).length,
+      notStarted: Object.values(caseStore.caseProgress).filter(p => !p.preCompleted && !p.postCompleted).length,
+      progressByCase: Object.entries(caseStore.caseProgress).reduce((acc, [caseId, progress]) => {
+        acc[`case_${caseId}`] = {
+          preCompleted: progress.preCompleted,
+          postCompleted: progress.postCompleted,
+          status: progress.postCompleted ? 'completed' : 
+                 progress.preCompleted ? 'post-ai-pending' : 
+                 'not-started'
+        };
+        return acc;
+      }, {})
+    };
+
+    console.log('Progress Summary:', progressSummary);
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load data. Please try refreshing the page.',
+      life: 5000
+    });
+  } finally {
+    loading.value = false;
+  }
+};
 
 onMounted(async () => {
   if (!userStore.isAuthenticated) {
     router.push('/login');
     return;
   }
-  
   loading.value = true;
-  try {
-    const success = await caseStore.loadCases();
-    // Add detailed logging
-    console.log('API Fetched Cases:', cases.value);
-    console.log('Case Progress State:', caseStore.getCaseProgressState());
-    console.log('Completed Cases:', completedCases.value);
-    
-    if (!success) {
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to load cases. Please try refreshing the page.',
-        life: 5000
-      });
-    }
-  } catch (error) {
-    console.error('Failed to load cases:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load cases. Please try refreshing the page.',
-      life: 5000
-    });
-  } finally {
-    loading.value = false;
-  }
+  await loadAndDisplayProgress();
 });
 
+// Add watch for assessment updates
+watch(() => caseStore.caseProgress, () => {
+  // This will trigger reactivity when assessment status changes
+}, { deep: true });
+
 const navigateToCase = (caseData: any) => {
-  router.push(`/case/${caseData.id}`);
+  if (!caseData || typeof caseData.id === 'undefined') {
+    console.error('Invalid case data:', caseData);
+    return;
+  }
+  
+  const progress = caseStore.getCaseProgress(caseData.id);
+  if (progress?.preCompleted && !progress?.postCompleted) {
+    // If pre-AI is completed but post-AI isn't, navigate directly to post-AI phase
+    router.push(`/case/${caseData.id}?phase=post`);
+  } else {
+    router.push(`/case/${caseData.id}`);
+  }
 };
 
 const getStatusSeverity = (caseData: any) => {
