@@ -51,7 +51,8 @@ const handleLogin = async () => {
     params.append('username', email.value);
     params.append('password', password.value);
 
-    const response = await apiClient.post('/auth/jwt/login', params, {
+    // Prepend /api so the Vite proxy catches the request
+    const response = await apiClient.post('/api/auth/jwt/login', params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
