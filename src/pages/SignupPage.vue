@@ -170,7 +170,6 @@ const rolesLoading = ref(false); // Loading state for roles dropdown
 const roles = ref<Role[]>([]); // To store fetched roles
 
 // Static data for other dropdowns
-const ageBrackets = ref(['18-29', '30-39', '40-49', '50-59', '60+']);
 const genders = ref(['Male', 'Female', 'Other', 'Prefer not to say']);
 
 // Fetch roles when the component mounts

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
+import { ref, reactive, watch, computed } from 'vue'; // Removed onMounted, nextTick
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useUserStore } from '../stores/userStore';
@@ -9,8 +9,8 @@ import apiClient from '../api';
 import Card from 'primevue/card';
 import Carousel from 'primevue/carousel';
 import Panel from 'primevue/panel';
-import InputText from 'primevue/inputtext';
-import Slider from 'primevue/slider';
+// Removed unused InputText import
+// Removed unused Slider import
 import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
@@ -18,11 +18,12 @@ import Toast from 'primevue/toast';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import SelectButton from 'primevue/selectbutton';
-import Divider from 'primevue/divider';
+// Removed unused Divider import
 import Steps from 'primevue/steps';
 import Tag from 'primevue/tag';
 import Message from 'primevue/message';
 import ProgressBar from 'primevue/progressbar';
+import type { MenuItem } from 'primevue/menuitem'; // Import MenuItem type for Steps
 
 // --- Interfaces ---
 interface ImageRead {
@@ -81,15 +82,7 @@ interface DiagnosisCreate {
   rank: number;
 }
 
-interface DiagnosisRead {
-  id: number;
-  assessment_user_id: number;
-  assessment_case_id: number;
-  assessment_is_post_ai: boolean;
-  diagnosis_id: number;
-  rank: number;
-  diagnosis_term: DiagnosisTermRead;
-}
+// Removed unused DiagnosisRead interface
 
 interface ManagementPlanCreate {
   assessment_user_id: number;
@@ -99,21 +92,7 @@ interface ManagementPlanCreate {
   free_text?: string | null;
 }
 
-interface AssessmentRead {
-  user_id: number;
-  case_id: number;
-  is_post_ai: boolean;
-  created_at: string;
-  assessable_image_score?: number | null;
-  confidence_level_top1?: number | null;
-  management_confidence?: number | null;
-  certainty_level?: number | null;
-  ai_usefulness?: string | null;
-  change_diagnosis_after_ai?: boolean | null;
-  change_management_after_ai?: boolean | null;
-  diagnoses: DiagnosisRead[];
-  management_plan?: ManagementPlanRead | null;
-}
+// Removed unused ManagementPlanRead interface
 
 interface Case {
   id: number;
@@ -135,6 +114,7 @@ const caseStore = useCaseStore();
 
 const caseId = computed(() => parseInt(route.params.id as string, 10));
 const userId = computed(() => userStore.user?.id);
+const submitted = ref(false); // Added submitted ref for validation
 
 // --- State ---
 const images = ref<ImageRead[]>([]);
@@ -146,12 +126,24 @@ const loading = ref(false);
 const submitting = ref(false);
 
 // --- Phase Detection ---
-const caseProgress = computed(() => caseStore.getCaseProgress(caseId.value));
 const isPreAiCompleteForCurrentCase = computed(() => {
   const progress = caseStore.caseProgress[caseId.value];
   return progress ? progress.preCompleted : false;
 });
 const isPostAiPhase = computed(() => isPreAiCompleteForCurrentCase.value);
+
+// --- Steps for Progress Indicator ---
+const items = ref<MenuItem[]>([
+  { label: 'Pre-AI Assessment' },
+  { label: 'Post-AI Assessment' },
+  { label: 'Complete' }
+]);
+const activeStep = computed(() => {
+  const progress = caseStore.caseProgress[caseId.value];
+  if (progress?.postCompleted) return 2;
+  if (progress?.preCompleted) return 1;
+  return 0;
+});
 
 // --- Form Data ---
 const preAiFormData = reactive({
@@ -204,11 +196,12 @@ const scoreOptions = ref([
 const fetchData = async () => {
   if (!caseId.value) return;
   loading.value = true;
-  aiOutputs.value = [];
+  aiOutputs.value = []; // Reset AI outputs
 
   console.log(`Fetching data for case ${caseId.value}, isPostAiPhase: ${isPostAiPhase.value}`);
 
   try {
+    // Fetch common data first
     const commonFetches = [
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
       apiClient.get<Case>(`/api/cases/${caseId.value}`),
@@ -216,46 +209,54 @@ const fetchData = async () => {
       apiClient.get<DiagnosisTermRead[]>('/api/diagnosis_terms/')
     ];
 
-    if (isPostAiPhase.value) {
-      console.log(`Fetching AI outputs for case ${caseId.value}`);
-      commonFetches.push(apiClient.get<AIOutputRead[]>(`/api/ai_outputs/case/${caseId.value}`));
-    }
+    // Use type assertions for Promise.all results
+    const [imagesResponse, caseResponse, strategiesResponse, termsResponse] = await Promise.all(commonFetches);
 
-    const responses = await Promise.all(commonFetches);
-
-    images.value = responses[0].data;
-    const caseData = responses[1].data;
+    images.value = imagesResponse.data as ImageRead[];
+    const caseData = caseResponse.data as Case;
     if (!caseData) {
       throw new Error('Failed to load case data');
     }
     metadata.value = caseData.case_metadata_relation;
-    managementStrategies.value = responses[2].data;
-    diagnosisTerms.value = responses[3].data;
+    managementStrategies.value = strategiesResponse.data as ManagementStrategyRead[];
+    diagnosisTerms.value = termsResponse.data as DiagnosisTermRead[];
 
-    if (isPostAiPhase.value && responses.length > 4) {
-      aiOutputs.value = responses[4].data.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
-      console.log(`Loaded ${aiOutputs.value.length} AI outputs.`);
-      loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+    // Fetch AI outputs conditionally AFTER common data is loaded
+    if (isPostAiPhase.value) {
+      console.log(`Fetching AI outputs for case ${caseId.value}`);
+      try {
+        const aiResponse = await apiClient.get<AIOutputRead[]>(`/api/ai_outputs/case/${caseId.value}`);
+        // Add explicit types for sort parameters
+        aiOutputs.value = aiResponse.data.sort((a: AIOutputRead, b: AIOutputRead) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
+        console.log(`Loaded ${aiOutputs.value.length} AI outputs.`);
+        loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+      } catch (aiError) {
+        console.error('Failed to fetch AI outputs:', aiError);
+        // Decide how to handle AI fetch failure, maybe show a message?
+        aiOutputs.value = [];
+        loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData); // Still load saved form data
+      }
     } else {
       aiOutputs.value = [];
       loadFromLocalStorage(preAiLocalStorageKey.value, preAiFormData);
     }
+
   } catch (error: any) {
     console.error('Failed to fetch case data:', error);
     if (error.response?.status === 404) {
-      toast.add({ 
-        severity: 'error', 
-        summary: 'Case Not Found', 
+      toast.add({
+        severity: 'error',
+        summary: 'Case Not Found',
         detail: 'The requested case could not be found.',
-        life: 5000 
+        life: 5000
       });
       router.push('/'); // Redirect to dashboard if case not found
     } else {
-      toast.add({ 
-        severity: 'error', 
-        summary: 'Error', 
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
         detail: 'Failed to load case data. Please try again.',
-        life: 3000 
+        life: 3000
       });
     }
   } finally {
@@ -328,38 +329,15 @@ watch(() => route.params.id, async (newIdStr, oldIdStr) => {
 
 watch(isPostAiPhase, async (newPhase, oldPhase) => {
   console.log(`Phase changed from ${oldPhase ? 'Post-AI' : 'Pre-AI'} to ${newPhase ? 'Post-AI' : 'Pre-AI'} for case ${caseId.value}`);
-  if (newPhase !== oldPhase && oldPhase !== undefined) { 
+  if (newPhase !== oldPhase && oldPhase !== undefined) {
     console.log('Phase changed, refetching data...');
     await fetchData();
   }
 }, { immediate: false });
 
 // --- Submission Logic ---
-async function fetchAssessment(userId: number, caseId: number, isPostAi: boolean): Promise<AssessmentRead | null> {
-  try {
-    const response = await apiClient.get<AssessmentRead>(
-      `/api/assessments/${userId}/${caseId}/${isPostAi}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch assessment:', error);
-    return null;
-  }
-}
-
-const fetchManagementPlan = async (userId: number, caseId: number, isPostAi: boolean) => {
-  try {
-    const response = await apiClient.get(
-      `/api/management_plans/assessment/${userId}/${caseId}/${isPostAi}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch management plan:', error);
-    return null;
-  }
-};
-
 const handlePreAiSubmit = async () => {
+  submitted.value = true; // Set submitted to true for validation
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
     return;
@@ -386,33 +364,33 @@ const handlePreAiSubmit = async () => {
     await apiClient.post('/api/assessments/', assessmentPayload);
 
     const diagnoses = [
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: false,
         diagnosis_id: preAiFormData.diagnosisRank1Id!,
-        rank: 1 
+        rank: 1
       },
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: false,
         diagnosis_id: preAiFormData.diagnosisRank2Id!,
-        rank: 2 
+        rank: 2
       },
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: false,
         diagnosis_id: preAiFormData.diagnosisRank3Id!,
-        rank: 3 
+        rank: 3
       }
     ];
 
     for (const diagnosis of diagnoses) {
       await apiClient.post('/api/diagnoses/', diagnosis);
     }
-    
+
     const managementPlanPayload = {
       assessment_user_id: userId.value!,
       assessment_case_id: caseId.value,
@@ -425,10 +403,9 @@ const handlePreAiSubmit = async () => {
     await caseStore.markProgress(caseId.value, false);
 
     clearLocalStorage(preAiLocalStorageKey.value);
+    submitted.value = false; // Reset submitted after successful submission
 
     toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
-
-    router.replace({ path: router.currentRoute.value.path, query: { phase: 'post' } });
 
   } catch (error: any) {
     console.error('Failed to submit pre-AI assessment:', error);
@@ -439,6 +416,7 @@ const handlePreAiSubmit = async () => {
 };
 
 const handlePostAiSubmit = async () => {
+  submitted.value = true; // Set submitted to true for validation
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
     return;
@@ -472,26 +450,26 @@ const handlePostAiSubmit = async () => {
     await apiClient.post('/api/assessments/', assessmentPayload);
 
     const diagnoses: DiagnosisCreate[] = [
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: true,
         diagnosis_id: postAiFormData.diagnosisRank1Id!,
-        rank: 1 
+        rank: 1
       },
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: true,
         diagnosis_id: postAiFormData.diagnosisRank2Id!,
-        rank: 2 
+        rank: 2
       },
-      { 
+      {
         assessment_user_id: userId.value!,
         assessment_case_id: caseId.value,
         assessment_is_post_ai: true,
         diagnosis_id: postAiFormData.diagnosisRank3Id!,
-        rank: 3 
+        rank: 3
       }
     ];
 
@@ -512,22 +490,23 @@ const handlePostAiSubmit = async () => {
 
     clearLocalStorage(postAiLocalStorageKey.value);
     resetFormData();
+    submitted.value = false; // Reset submitted after successful submission
 
     const nextCase = caseStore.getNextIncompleteCase();
     if (nextCase) {
-      toast.add({ 
-        severity: 'success', 
-        summary: 'Case Completed!', 
-        detail: 'Great work! Moving to next case...', 
-        life: 2000 
+      toast.add({
+        severity: 'success',
+        summary: 'Case Completed!',
+        detail: 'Great work! Moving to next case...',
+        life: 2000
       });
       router.push({ path: `/case/${nextCase.id}`, query: {} });
     } else {
-      toast.add({ 
-        severity: 'success', 
-        summary: '🏅 All Cases Completed!', 
-        detail: 'Thank you for your valuable contributions! You have completed all cases.', 
-        life: 5000 
+      toast.add({
+        severity: 'success',
+        summary: '🏅 All Cases Completed!',
+        detail: 'Thank you for your valuable contributions! You have completed all cases.',
+        life: 5000
       });
       router.push('/');
     }
@@ -557,7 +536,7 @@ const handleApiError = (error: any, summary: string) => {
 
 // --- Computed Functions for Labels ---
 const getConfidenceLabel = (score: number) => {
-  switch(score) {
+  switch (score) {
     case 1: return 'Very Low Confidence';
     case 2: return 'Low Confidence';
     case 3: return 'Moderate Confidence';
@@ -568,7 +547,7 @@ const getConfidenceLabel = (score: number) => {
 };
 
 const getCertaintyLabel = (score: number) => {
-  switch(score) {
+  switch (score) {
     case 1: return 'Very Uncertain';
     case 2: return 'Somewhat Uncertain';
     case 3: return 'Moderately Certain';
@@ -582,11 +561,12 @@ const getCertaintyLabel = (score: number) => {
 <template>
   <div class="case-container p-4">
     <Toast />
-    
+
     <!-- Progress Steps -->
     <Card class="mb-4">
       <template #content>
-        <Steps :model="items" :activeIndex="activeStep" />
+        <!-- Use defined items and activeStep -->
+        <Steps :model="items" :activeIndex="activeStep" :readonly="false" />
       </template>
     </Card>
 

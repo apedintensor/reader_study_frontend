@@ -194,7 +194,8 @@ const loadAndDisplayProgress = async () => {
       pending: pendingPostAiCases.value.length,
       inProgress: Object.values(caseStore.caseProgress).filter(p => p.preCompleted && !p.postCompleted).length,
       notStarted: Object.values(caseStore.caseProgress).filter(p => !p.preCompleted && !p.postCompleted).length,
-      progressByCase: Object.entries(caseStore.caseProgress).reduce((acc, [caseId, progress]) => {
+      // Add index signature to acc
+      progressByCase: Object.entries(caseStore.caseProgress).reduce((acc: { [key: string]: any }, [caseId, progress]) => {
         acc[`case_${caseId}`] = {
           preCompleted: progress.preCompleted,
           postCompleted: progress.postCompleted,

@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
+    allowedHosts: ['af06-194-223-5-201.ngrok-free.app'], // Add the allowed host
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
