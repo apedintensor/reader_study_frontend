@@ -4,6 +4,7 @@ import DashboardPage from '../pages/DashboardPage.vue';
 import LoginPage from '../pages/LoginPage.vue';
 import SignupPage from '../pages/SignupPage.vue';
 import CasePage from '../pages/CasePage.vue';
+import ReviewPage from '../pages/ReviewPage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,11 +24,16 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: SignupPage
-    },
-    {
+    },    {
       path: '/case/:id',
       name: 'case',
       component: CasePage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/case/:id/review',
+      name: 'review',
+      component: ReviewPage,
       meta: { requiresAuth: true }
     }
   ]

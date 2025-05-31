@@ -242,7 +242,10 @@ const navigateToCase = (caseData: any) => {
   }
   
   const progress = caseStore.getCaseProgress(caseData.id);
-  if (progress?.preCompleted && !progress?.postCompleted) {
+  if (progress?.postCompleted) {
+    // If both phases are completed, navigate to review page
+    router.push(`/case/${caseData.id}/review`);
+  } else if (progress?.preCompleted && !progress?.postCompleted) {
     // If pre-AI is completed but post-AI isn't, navigate directly to post-AI phase
     router.push(`/case/${caseData.id}?phase=post`);
   } else {
