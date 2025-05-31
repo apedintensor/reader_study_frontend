@@ -69,9 +69,9 @@ The project follows a standard Vue 3 + Vite structure:
 
 ## Setup and Installation
 
-1.  **Clone the repository** (if applicable):
+1.  **Clone the repository**:
     ```pwsh
-    git clone <repository-url>
+    git clone https://github.com/apedintensor/reader_study_frontend.git
     cd frontend
     ```
 
