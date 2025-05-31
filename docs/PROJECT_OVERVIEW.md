@@ -1,37 +1,35 @@
-# 📘 Project Overview & Guardrails for Copilot
+# 📘 AI-Assisted Skin Diagnosis Reader Study Platform
+
+## 🌟 Project Overview
+
+This is a comprehensive web-based clinical reader study platform designed to evaluate how AI assistance affects clinician decision-making in dermatological diagnosis. Healthcare professionals assess skin condition cases in two distinct phases: first without AI assistance (Pre-AI), then with AI-generated suggestions (Post-AI). The platform measures changes in diagnostic accuracy, confidence levels, and management strategy selection to provide valuable insights for medical AI research.
+
+## 🎯 Core Objectives
+
+- **Measure AI Impact**: Track how AI suggestions influence diagnostic decisions
+- **Capture Confidence Changes**: Monitor clinician confidence before and after AI exposure  
+- **Evaluate Management Strategies**: Assess how AI affects treatment plan selection
+- **Ensure Data Quality**: Robust data collection with local caching and API synchronization
 
 ---
 
-## 🧠 Project Title:
+## 🏗️ Technology Stack
 
-**AI-Assisted Skin Diagnosis Reader Study Platform**
+### Frontend
+- **Vue 3** with Composition API for reactive UI
+- **Vite** for fast development and building
+- **PrimeVue 4.x** for comprehensive UI components
+- **Pinia** for centralized state management
+- **Vue Router** for client-side navigation
+- **Axios** for HTTP requests with interceptors
+- **TypeScript** for type safety
+- **Cypress** for end-to-end testing
 
----
-
-## 🌟 Purpose:
-
-Build a web-based clinical reader study platform where clinicians evaluate skin condition cases before and after seeing AI-generated suggestions. The goal is to measure changes in diagnostic accuracy, confidence, and management strategy selection.
-
----
-
-## 🏗️ Tech Stack
-
-### ✅ Frontend
-
-* **Vue 3 + Vite**
-* **PrimeVue** for UI components
-* **Pinia** for state management
-* **Vue Router** for navigation
-* **Axios** for API communication
-* **Cypress** for end-to-end testing
-* **localStorage** for session persistence
-
-### ✅ Backend
-
-* **FastAPI (provided)**
-* **JWT auth** via `fastapi-users` (no refresh token)
-* Full OpenAPI schema available
-* Data includes cases, users, AI outputs, assessments, diagnoses, management plans, etc.
+### Backend (Provided)
+- **FastAPI** with automatic OpenAPI documentation
+- **JWT Authentication** via `fastapi-users`
+- **PostgreSQL** database with SQLAlchemy ORM
+- **Comprehensive REST API** for all data operations
 
 ---
 

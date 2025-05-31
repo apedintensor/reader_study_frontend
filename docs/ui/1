@@ -1,31 +1,63 @@
-Final, Copilot-Ready Prompt with Version Lock + Theming Rules
-markdown
-Copy
-Edit
-🎯 Objective:
-Improve the UI of this Vue 3 + PrimeVue 4.x application using styled mode, Aura theme, and proper modern PrimeVue component usage.
+# UI Improvement Prompt for Vue 3 + PrimeVue 4 (Styled Mode)
 
-🧠 PrimeVue 4.x Setup Rules (VERY IMPORTANT):
-- PrimeVue 4 uses a "styled mode" with **theme presets**, NOT CSS theme files.
-- ❌ DO NOT use legacy imports like: `import 'primevue/resources/themes/saga-blue/theme.css'`
-- ✅ INSTEAD: Use styled theming like:
-  import Aura from '@primevue/themes/aura'
-  app.use(PrimeVue, { theme: { preset: Aura } })
+## Objective
+Enhance the user interface of a Vue 3 application utilizing PrimeVue 4.x in **styled mode** with the **Aura theme**. Focus on modern component usage and layout best practices.
 
-📦 Ensure the following packages are installed:
-- `primevue` (must be version ^4.x)
-- `@primevue/themes` (for Aura and other styled themes)
-- `primeicons` (for icons)
-- ONLY import icons manually:
-  import 'primeicons/primeicons.css';
+## Core PrimeVue 4.x Setup (Styled Mode)
+Ensure the project adheres to the following PrimeVue 4.x configuration for theming:
 
-🎨 Theming & UI Goals:
-1. Apply a modern, readable layout using PrimeVue 4 components.
-2. Use `Card`, `Divider`, `Accordion`, `DataTable`, `Button`, `Tag`, `Tooltip`, `Toast`, `Dialog` where applicable.
-3. Add PrimeFlex layout classes for spacing, grid, and responsiveness.
-4. Use `severity` variants for buttons and tags to visually differentiate actions and statuses.
-5. Use `v-tooltip` on inputs or buttons for helper text.
-6. Do not change any business logic — only improve the UI structure and design using proper PrimeVue 4.x styled components.
+-   **Styled Mode with Presets**: PrimeVue 4 uses theme presets, not direct CSS file imports for themes.
+-   **Correct Import**: Use the `@primevue/themes` package for presets.
 
-💡 NOTE FOR COPILOT:
-This app uses the **PrimeVue 4 styled system** and **Aura theme**, so DO NOT suggest `.css` theme
+    ```typescript
+    // Example in src/main.ts
+    import { createApp } from 'vue';
+    import PrimeVue from 'primevue/config';
+    import Aura from '@primevue/themes/aura'; // Correct theme preset import
+    import App from './App.vue';
+
+    const app = createApp(App);
+
+    app.use(PrimeVue, {
+      theme: {
+        preset: Aura,
+        options: {
+          // Optional: Add prefix, dark mode, etc.
+          // prefix: 'p',
+          // darkModeSelector: '.dark-mode'
+        }
+      }
+    });
+
+    app.mount('#app');
+    ```
+-   **Icon Import**: PrimeIcons should be imported directly if not already globally available.
+    ```typescript
+    // Example in src/main.ts (if not already handled by PrimeVue setup)
+    import 'primeicons/primeicons.css';
+    ```
+
+## UI Enhancement Goals
+
+1.  **Modern Layout**: Implement a clean, readable, and responsive layout using PrimeVue 4 components and PrimeFlex.
+2.  **Component Usage**: Leverage appropriate PrimeVue components such as:
+    *   `Card`: For grouping related content.
+    *   `Divider`: For separating sections.
+    *   `Accordion` or `TabView`: For managing collapsible content or tabbed interfaces.
+    *   `DataTable`: For displaying tabular data.
+    *   `Button`: With appropriate severity and icons.
+    *   `Tag`: For status indicators, using severity.
+    *   `Tooltip`: (`v-tooltip`) For providing contextual help.
+    *   `Toast`: For non-intrusive notifications.
+    *   `Dialog`: For modal interactions.
+3.  **PrimeFlex Integration**: Utilize PrimeFlex utility classes for:
+    *   Grid system (`p-grid`, `p-col-*`).
+    *   Spacing (e.g., `p-m-2`, `p-p-3`).
+    *   Flexbox utilities for alignment and distribution.
+    *   Responsive design (`p-d-none`, `p-d-md-block`, etc.).
+4.  **Visual Differentiation**: Apply `severity` properties to `Button`, `Tag`, and other relevant components (e.g., `p-button-primary`, `p-tag-success`) to convey meaning and importance.
+5.  **Contextual Information**: Use `v-tooltip` directive on input fields, buttons, or icons where additional information can enhance usability.
+
+## Constraints
+-   **No Business Logic Changes**: Modifications should be limited to UI structure, component choices, and styling within the PrimeVue 4 framework.
+-   **Adherence to PrimeVue 4 Styled Mode**: All UI changes must be compatible with the styled mode and Aura theme preset. Avoid legacy CSS theme file references or custom CSS that conflicts with the theme system.
