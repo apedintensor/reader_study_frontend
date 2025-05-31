@@ -506,6 +506,7 @@ const getCertaintyLabel = (score: number) => {
     <div class="grid">
       <!-- Left Column -->
       <div class="col-12 lg:col-5">
+        <h1 v-if="caseId" class="mb-3 text-normal">Case #{{ caseId }}</h1>
         <CaseImageViewer :images="images" :loading="loading" />
         <CaseMetadataDisplay :metadata="metadata" :isPostAiPhase="isPostAiPhase" />
         <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
