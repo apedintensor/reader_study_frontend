@@ -1,12 +1,18 @@
 import axios from 'axios';
 
-const productionApiRoot = import.meta.env.VITE_API_BASE_URL_PROD; // e.g., "https://reader-study.onrender.com"
+// PROD: VITE_API_BASE_URL_PROD will be the root domain, e.g., "https://reader-study.onrender.com"
+//       API calls from your components should be like apiClient.get('/api/cases')
+// DEV:  The baseURL will be empty.
+//       API calls from your components should be like apiClient.get('/api/cases'),
+//       which will be handled by the Vite proxy.
+
+const productionApiRoot = import.meta.env.VITE_API_BASE_URL_PROD;
 const localDevelopmentApiRoot = ''; // Vite proxy will handle the full path including /api
 
 const apiClient = axios.create({
   baseURL: import.meta.env.PROD
     ? productionApiRoot  // e.g., "https://reader-study.onrender.com"
-    : localDevelopmentApiRoot, // For local, paths like '/api/cases' will be used directly
+    : localDevelopmentApiRoot, // For local, paths like '/api/cases' will be used directly by Axios
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,12 +26,12 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     // Log the request details
-    // Axios automatically combines baseURL and the request URL if baseURL is absolute.
-    // If baseURL is relative (like '' for dev), config.url will be the full path passed (e.g., '/api/cases').
-    const fullUrl = config.baseURL && !config.baseURL.startsWith('/') ? `${config.baseURL}${config.url}` : config.url;
+    // Axios automatically combines baseURL and the request URL (config.url).
+    // For logging, we can construct the full URL if needed, or rely on browser dev tools.
+    const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
     console.log('API Request:', {
       method: config.method?.toUpperCase(),
-      url: fullUrl,
+      url: fullUrl, // Log the full constructed URL
       data: config.data,
       headers: config.headers,
     });
