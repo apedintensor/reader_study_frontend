@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const productionApiRoot = import.meta.env.VITE_API_BASE_URL_PROD; // e.g., "https://reader-study.onrender.com"
+const localDevelopmentApiRoot = ''; // Vite proxy will handle the full path including /api
+
 const apiClient = axios.create({
-  baseURL: '', // Remove /api prefix since proxy handles it
+  baseURL: import.meta.env.PROD
+    ? productionApiRoot  // e.g., "https://reader-study.onrender.com"
+    : localDevelopmentApiRoot, // For local, paths like '/api/cases' will be used directly
   headers: {
     'Content-Type': 'application/json',
   },
@@ -15,11 +20,14 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     // Log the request details
+    // Axios automatically combines baseURL and the request URL if baseURL is absolute.
+    // If baseURL is relative (like '' for dev), config.url will be the full path passed (e.g., '/api/cases').
+    const fullUrl = config.baseURL && !config.baseURL.startsWith('/') ? `${config.baseURL}${config.url}` : config.url;
     console.log('API Request:', {
-      method: config.method,
-      url: config.url,
+      method: config.method?.toUpperCase(),
+      url: fullUrl,
+      data: config.data,
       headers: config.headers,
-      data: config.data
     });
     return config;
   },
