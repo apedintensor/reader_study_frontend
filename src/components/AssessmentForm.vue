@@ -176,7 +176,6 @@ import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
-import Tooltip from 'primevue/tooltip'; // Import Tooltip directive
 
 // Define tooltip texts
 const changeDiagnosisTooltipText = "Indicate if the AI's suggestions led you to change your primary diagnosis.";
