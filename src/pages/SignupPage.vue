@@ -199,7 +199,7 @@ const handleSignup = async () => {
     };
 
     // Use the correct endpoint from openapi.json
-    await apiClient.post('/api/auth/register/register', payload);
+    await apiClient.post('/api/auth/register', payload);
 
     toast.add({ severity: 'success', summary: 'Signup Successful', detail: 'Please log in.', life: 3000 });
     router.push('/login');
