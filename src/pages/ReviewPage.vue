@@ -115,6 +115,23 @@
 
       <!-- Right Column - Assessment Reviews -->
       <div class="col-12 lg:col-7">
+        <!-- Assessment Comparison -->
+        <Card class="mb-4">
+          <template #title>
+            <div class="flex align-items-center gap-2">
+              <i class="pi pi-chart-bar text-primary"></i>
+              <span>Assessment Comparison</span>
+            </div>
+          </template>
+          <template #content>
+            <AssessmentComparison 
+              :pre-ai-data="preAiData"
+              :post-ai-data="postAiData"
+              :diagnosis-terms="diagnosisTerms"
+              :management-strategies="managementStrategies" />
+          </template>
+        </Card>
+
         <!-- Pre-AI Assessment Review -->
         <Card class="mb-4">
           <template #title>
@@ -147,23 +164,6 @@
               :management-strategies="managementStrategies"
               phase="Post-AI"
               :show-ai-impact="true" />
-          </template>
-        </Card>
-
-        <!-- Assessment Comparison -->
-        <Card class="mb-4">
-          <template #title>
-            <div class="flex align-items-center gap-2">
-              <i class="pi pi-chart-bar text-primary"></i>
-              <span>Assessment Comparison</span>
-            </div>
-          </template>
-          <template #content>
-            <AssessmentComparison 
-              :pre-ai-data="preAiData"
-              :post-ai-data="postAiData"
-              :diagnosis-terms="diagnosisTerms"
-              :management-strategies="managementStrategies" />
           </template>
         </Card>
       </div>

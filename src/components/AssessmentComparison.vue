@@ -6,63 +6,35 @@
         <i class="pi pi-list"></i>
         Diagnosis Comparison
       </h3>
-      <div class="grid">
-        <div class="col-12 md:col-6">
-          <Card>
-            <template #title>
-              <div class="flex align-items-center gap-2">
-                <i class="pi pi-user text-primary"></i>
-                <span>Pre-AI</span>
-              </div>
-            </template>
-            <template #content>
-              <div class="diagnosis-list">
-                <div class="diagnosis-item">
-                  <span class="rank">1.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(preAiData.diagnosisRank1Id) }}</span>
-                </div>
-                <div class="diagnosis-item">
-                  <span class="rank">2.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(preAiData.diagnosisRank2Id) }}</span>
-                </div>
-                <div class="diagnosis-item">
-                  <span class="rank">3.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(preAiData.diagnosisRank3Id) }}</span>
+      <Card class="comparison-card">
+        <template #content>
+          <div class="diagnosis-comparison-grid">
+            <div class="dc-header pre flex align-items-center gap-2">
+              <i class="pi pi-user text-primary"></i>
+              <span>Pre-AI</span>
+            </div>
+            <div class="dc-header post flex align-items-center gap-2">
+              <i class="pi pi-android text-primary"></i>
+              <span>Post-AI</span>
+            </div>
+            <template v-for="rank in [1,2,3]" :key="rank">
+              <div class="diag-row">
+                <div class="diag-cell">
+                  <span class="rank">{{ rank }}.</span>
+                  <span class="diagnosis">{{ getPreRank(rank) }}</span>
                 </div>
               </div>
-            </template>
-          </Card>
-        </div>
-        <div class="col-12 md:col-6">
-          <Card>
-            <template #title>
-              <div class="flex align-items-center gap-2">
-                <i class="pi pi-android text-primary"></i>
-                <span>Post-AI</span>
-              </div>
-            </template>
-            <template #content>
-              <div class="diagnosis-list">
-                <div class="diagnosis-item" :class="{ 'changed': isDiagnosisChanged(1) }">
-                  <span class="rank">1.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(postAiData.diagnosisRank1Id) }}</span>
-                  <i v-if="isDiagnosisChanged(1)" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
-                </div>
-                <div class="diagnosis-item" :class="{ 'changed': isDiagnosisChanged(2) }">
-                  <span class="rank">2.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(postAiData.diagnosisRank2Id) }}</span>
-                  <i v-if="isDiagnosisChanged(2)" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
-                </div>
-                <div class="diagnosis-item" :class="{ 'changed': isDiagnosisChanged(3) }">
-                  <span class="rank">3.</span>
-                  <span class="diagnosis">{{ getDiagnosisName(postAiData.diagnosisRank3Id) }}</span>
-                  <i v-if="isDiagnosisChanged(3)" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
+              <div class="diag-row">
+                <div class="diag-cell" :class="{ changed: isDiagnosisChanged(rank) }">
+                  <span class="rank">{{ rank }}.</span>
+                  <span class="diagnosis">{{ getPostRank(rank) }}</span>
+                  <i v-if="isDiagnosisChanged(rank)" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
                 </div>
               </div>
             </template>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </template>
+      </Card>
     </div>
 
     <!-- Confidence & Certainty Comparison -->
@@ -73,7 +45,7 @@
       </h3>
       <div class="grid">
         <div class="col-12 md:col-6">
-          <Card>
+          <Card class="comparison-card">
             <template #title>Confidence in Top Diagnosis</template>
             <template #content>
               <div class="score-comparison">
@@ -104,7 +76,7 @@
           </Card>
         </div>
         <div class="col-12 md:col-6">
-          <Card>
+          <Card class="comparison-card">
             <template #title>Certainty of Management Plan</template>
             <template #content>
               <div class="score-comparison">
@@ -145,7 +117,7 @@
       </h3>
       <div class="grid">
         <div class="col-12 md:col-6">
-          <Card>
+          <Card class="comparison-card">
             <template #title>
               <div class="flex align-items-center gap-2">
                 <i class="pi pi-user text-primary"></i>
@@ -167,7 +139,7 @@
           </Card>
         </div>
         <div class="col-12 md:col-6">
-          <Card>
+          <Card class="comparison-card">
             <template #title>
               <div class="flex align-items-center gap-2">
                 <i class="pi pi-android text-primary"></i>
@@ -201,7 +173,7 @@
         <i class="pi pi-chart-pie"></i>
         Assessment Summary
       </h3>
-      <Card>
+  <Card class="comparison-card">
         <template #content>
           <div class="grid text-center">
             <div class="col-12 md:col-3">
@@ -291,6 +263,26 @@ const getManagementStrategyName = (strategyId: number | null): string => {
   return strategy ? strategy.name : 'Unknown strategy';
 };
 
+// Helper accessors for aligned grid
+const getPreRank = (rank: number): string => {
+  if (!props.preAiData) return '—';
+  switch (rank) {
+    case 1: return getDiagnosisName(props.preAiData.diagnosisRank1Id);
+    case 2: return getDiagnosisName(props.preAiData.diagnosisRank2Id);
+    case 3: return getDiagnosisName(props.preAiData.diagnosisRank3Id);
+    default: return '—';
+  }
+};
+const getPostRank = (rank: number): string => {
+  if (!props.postAiData) return '—';
+  switch (rank) {
+    case 1: return getDiagnosisName(props.postAiData.diagnosisRank1Id);
+    case 2: return getDiagnosisName(props.postAiData.diagnosisRank2Id);
+    case 3: return getDiagnosisName(props.postAiData.diagnosisRank3Id);
+    default: return '—';
+  }
+};
+
 const isDiagnosisChanged = (rank: number): boolean => {
   if (!props.preAiData || !props.postAiData) return false;
   
@@ -335,6 +327,13 @@ const certaintyChange = computed(() => {
   width: 100%;
 }
 
+.equal-grid > [class*='col-'] { display:flex; }
+.comparison-card { flex:1 1 auto; display:flex; flex-direction:column; }
+.comparison-card :deep(.p-card-content) { flex:1 1 auto; display:flex; flex-direction:column; }
+.comparison-card .diagnosis-list,
+.comparison-card .score-comparison,
+.comparison-card .management-display { flex:1 1 auto; }
+
 .comparison-section {
   margin-bottom: 2rem;
 }
@@ -344,6 +343,13 @@ const certaintyChange = computed(() => {
   flex-direction: column;
   gap: 0.75rem;
 }
+
+/* New aligned grid for diagnoses */
+.diagnosis-comparison-grid { display:grid; grid-template-columns:1fr 1fr; column-gap:2rem; row-gap:.75rem; }
+.diagnosis-comparison-grid .dc-header { font-weight:600; padding:.25rem 0 .5rem; }
+.diagnosis-comparison-grid .diag-cell { display:flex; align-items:center; padding:.6rem .75rem; background:var(--surface-ground); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
+.diagnosis-comparison-grid .diag-cell.changed { background: var(--orange-50); border-color: var(--orange-200); }
+.diagnosis-comparison-grid .rank { font-weight:600; width:1.25rem; margin-right:.5rem; }
 
 .diagnosis-item {
   display: flex;
@@ -440,6 +446,8 @@ const certaintyChange = computed(() => {
   padding: 1rem;
   text-align: center;
 }
+
+.comparison-section .grid { row-gap:1.25rem; }
 
 .summary-stat .text-2xl {
   color: var(--text-color);

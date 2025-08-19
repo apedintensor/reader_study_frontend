@@ -2,7 +2,7 @@
   <div v-if="assessmentData" class="assessment-display">
     <!-- Diagnoses Section -->
     <Fieldset legend="Differential Diagnoses (Top 3)" class="mb-4">
-      <div class="grid">
+      <div class="grid equal-cols">
         <div class="col-12 md:col-4">
           <div class="field-display">
             <span class="field-label font-semibold">Rank 1 Diagnosis:</span>
@@ -26,7 +26,7 @@
 
     <!-- Confidence & Certainty Section -->
     <Fieldset legend="Confidence & Certainty" class="mb-4">
-      <div class="grid">
+      <div class="grid equal-cols">
         <div class="col-12 md:col-6">
           <div class="field-display">
             <span class="field-label font-semibold">Confidence in Top Diagnosis:</span>
@@ -73,7 +73,7 @@
     <!-- AI Impact Assessment (Post-AI only) -->
     <div v-if="showAiImpact && assessmentData.changeDiagnosis !== undefined">
       <Fieldset legend="AI Impact Assessment" class="mb-4">
-        <div class="grid">
+        <div class="grid equal-cols ai-impact-section">
           <div class="col-12 md:col-4">
             <div class="field-display">
               <span class="field-label font-semibold">Changed Primary Diagnosis:</span>
@@ -204,9 +204,14 @@ const getAiUsefulnessSeverity = (usefulness: string | null | undefined): string 
   width: 100%;
 }
 
-.field-display {
-  margin-bottom: 1rem;
+.equal-cols > [class*='col-'] {
+  display: flex;
+  flex-direction: column;
 }
+
+.equal-cols .field-display { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; text-align:center; }
+
+.field-display { margin-bottom: .85rem; }
 
 .field-display label {
   display: block;
@@ -214,15 +219,7 @@ const getAiUsefulnessSeverity = (usefulness: string | null | undefined): string 
   color: var(--text-color);
 }
 
-.field-display .value {
-  padding: 0.75rem;
-  background: var(--surface-ground);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
-  min-height: 2.5rem;
-  display: flex;
-  align-items: center;
-}
+.field-display .value { padding:0.5rem 0.75rem; background:var(--surface-ground); border:1px solid var(--surface-border); border-radius:var(--border-radius); min-height:2.4rem; display:flex; align-items:center; justify-content:center; line-height:1.3; }
 
 .field-display .value.notes {
   white-space: pre-wrap;
@@ -243,7 +240,23 @@ const getAiUsefulnessSeverity = (usefulness: string | null | undefined): string 
   font-weight: 600;
 }
 
-:deep(.p-fieldset-content) {
-  padding: 1rem;
+:deep(.p-fieldset-content) { padding: .85rem 1rem 1rem; }
+
+/* Equalize tag line heights */
+.value :deep(.p-tag) { line-height:1; font-size:.75rem; font-weight:600; }
+
+/* AI Impact section specific alignment */
+.ai-impact-section .field-display { 
+  align-items: stretch; 
+  text-align: left; 
+}
+
+.ai-impact-section .field-label { 
+  text-align: center; 
+  margin-bottom: 0.5rem; 
+}
+
+.ai-impact-section .value { 
+  justify-content: center; 
 }
 </style>

@@ -11,14 +11,16 @@
         </template>
         <template #content>
           <form @submit.prevent="handleSignup" class="p-fluid">
-            <div class="grid">
+            <div class="grid form-grid">
               <!-- Email Field -->
-              <div class="col-12 mb-4">
-                <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
-                  <i class="pi pi-envelope text-500" />
+              <div class="col-12">
+                <label for="email" class="field-label">Email</label>
+                <div class="input-wrapper">
+                  <i class="pi pi-envelope" />
                   <InputText
+                    id="email"
                     v-model="formData.email"
-                    placeholder="Email"
+                    placeholder="you@example.com"
                     class="w-full border-none shadow-none"
                     required
                   />
@@ -26,12 +28,14 @@
               </div>
 
               <!-- Password Field -->
-              <div class="col-12 mb-4">
-                <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
-                  <i class="pi pi-lock text-500" />
+              <div class="col-12">
+                <label for="password" class="field-label">Password</label>
+                <div class="input-wrapper">
+                  <i class="pi pi-lock" />
                   <Password
+                    id="password"
                     v-model="formData.password"
-                    placeholder="Password"
+                    placeholder="••••••••"
                     :toggleMask="true"
                     :feedback="true"
                     class="w-full border-none shadow-none"
@@ -39,65 +43,58 @@
                   />
                 </div>
               </div>
-            </div>
-            <div class="grid">
-              <div class="col-12 md:col-6 mb-4">
-                <span class="p-float-label">
-                  <Dropdown 
-                    id="gender" 
-                    v-model="formData.gender" 
-                    :options="genders" 
-                    class="w-full"
-                    required 
-                  />
-                  <label for="gender">Gender</label>
-                </span>
+
+              <div class="col-12 md:col-6">
+                <label for="gender" class="field-label with-icon"><i class="pi pi-user" /> Gender</label>
+                <Dropdown 
+                  id="gender" 
+                  v-model="formData.gender" 
+                  :options="genders" 
+                  class="w-full"
+                  placeholder="Select gender" 
+                  required 
+                />
               </div>
 
-              <div class="col-12 md:col-6 mb-4">
-                <span class="p-float-label">
-                  <InputNumber 
-                    id="exp" 
-                    v-model="formData.years_experience" 
-                    :min="0" 
-                    :step="1"
-                    showButtons
-                    class="w-full" 
-                    required
-                  />
-                  <label for="exp">Years Clinical Experience</label>
-                </span>
+              <div class="col-12 md:col-6">
+                <label for="exp" class="field-label with-icon"><i class="pi pi-briefcase" /> Years Clinical Experience</label>
+                <InputNumber 
+                  id="exp" 
+                  v-model="formData.years_experience" 
+                  :min="0" 
+                  :step="1"
+                  showButtons
+                  class="w-full" 
+                  required
+                />
               </div>
 
-              <div class="col-12 md:col-6 mb-4">
-                <span class="p-float-label">
-                  <InputNumber 
-                    id="dermExp" 
-                    v-model="formData.years_derm_experience" 
-                    :min="0" 
-                    :step="1"
-                    showButtons
-                    class="w-full" 
-                    required
-                  />
-                  <label for="dermExp">Years Dermatology Experience</label>
-                </span>
+              <div class="col-12 md:col-6">
+                <label for="dermExp" class="field-label with-icon"><i class="pi pi-sparkles" /> Years Dermatology Experience</label>
+                <InputNumber 
+                  id="dermExp" 
+                  v-model="formData.years_derm_experience" 
+                  :min="0" 
+                  :step="1"
+                  showButtons
+                  class="w-full" 
+                  required
+                />
               </div>
 
-              <div class="col-12 mb-4">
-                <span class="p-float-label">
-                  <Dropdown 
-                    id="role" 
-                    v-model="formData.role_id" 
-                    :options="roles" 
-                    optionLabel="name" 
-                    optionValue="id" 
-                    class="w-full"
-                    :loading="rolesLoading"
-                    required 
-                  />
-                  <label for="role">Professional Role</label>
-                </span>
+              <div class="col-12 md:col-6">
+                <label for="role" class="field-label with-icon"><i class="pi pi-id-card" /> Professional Role</label>
+                <Dropdown 
+                  id="role" 
+                  v-model="formData.role_id" 
+                  :options="roles" 
+                  optionLabel="name" 
+                  optionValue="id" 
+                  class="w-full"
+                  :loading="rolesLoading"
+                  placeholder="Select role"
+                  required 
+                />
               </div>
 
               <div class="col-12">
@@ -106,10 +103,10 @@
                   :label="loading ? 'Creating account...' : 'Create account'" 
                   :loading="loading"
                   severity="primary"
-                  class="w-full p-3 mb-4"
+                  class="w-full p-3 mt-2"
                 />
 
-                <div class="text-center">
+                <div class="text-center mt-4">
                   <Divider align="center">
                     <span class="text-600 font-medium">Already have an account?</span>
                   </Divider>
@@ -236,6 +233,15 @@ const handleSignup = async () => {
   max-width: 600px;
 }
 
+.form-grid { row-gap: 1.25rem; }
+
+.field-label { display:block; font-weight:600; margin-bottom:.4rem; font-size:.85rem; letter-spacing:.3px; }
+.field-label.with-icon i { margin-right:.4rem; font-size:.85rem; opacity:.8; }
+
+.input-wrapper { display:flex; align-items:center; gap:.65rem; padding:.75rem .9rem; background:var(--surface-overlay); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
+.input-wrapper i { color:var(--text-color-secondary); font-size:1rem; }
+.input-wrapper:focus-within { outline:2px solid var(--primary-color); outline-offset:2px; }
+
 :deep(.p-card) {
   background: var(--surface-card);
   border-radius: var(--border-radius);
@@ -249,6 +255,13 @@ const handleSignup = async () => {
 :deep(.p-dropdown) {
   width: 100%;
 }
+
+:deep(.p-inputnumber),
+:deep(.p-inputnumber-input) { width:100%; }
+
+:deep(.p-dropdown),
+:deep(.p-password),
+:deep(.p-inputnumber) { background: var(--surface-overlay); }
 
 @media screen and (max-width: 576px) {
   .signup-container {
