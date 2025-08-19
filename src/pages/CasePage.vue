@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, reactive, watch, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useUserStore } from '../stores/userStore';
@@ -113,11 +113,17 @@ const loading = ref(false);
 const submitting = ref(false);
 
 // --- Phase Detection ---
-const isPreAiCompleteForCurrentCase = computed(() => {
+// Phase logic:
+//  activeStep 0: Pre-AI (no pre assessment yet)
+//  activeStep 1: Post-AI phase (preCompleted true, post not yet) -> show post form
+//  activeStep 2: Complete (postCompleted true) -> treat as post phase for display/completion
+const isPostAiPhase = computed(() => {
   const progress = caseStore.caseProgress[caseId.value];
-  return progress ? progress.preCompleted : false;
+  if (!progress) return false;
+  if (progress.postCompleted) return true;
+  if (progress.preCompleted && !progress.postCompleted) return true;
+  return false;
 });
-const isPostAiPhase = computed(() => isPreAiCompleteForCurrentCase.value);
 
 // --- Steps for Progress Indicator ---
 const items = computed<MenuItem[]>(() => [
@@ -128,9 +134,9 @@ const items = computed<MenuItem[]>(() => [
 
 const activeStep = computed(() => {
   const progress = caseStore.caseProgress[caseId.value];
-  if (progress?.postCompleted) return 2;
-  if (progress?.preCompleted || (route.query.phase === 'post' && progress?.preCompleted)) return 1;
-  return 0;
+  if (progress?.postCompleted) return 2; // Complete
+  if (progress?.preCompleted) return 1;  // Post-AI phase
+  return 0;                               // Pre-AI
 });
 
 
@@ -314,7 +320,14 @@ watch(() => route.params.id, async (newIdStr, oldIdStr) => {
   if (newId !== null && newId !== oldId) {
     resetFormData(); // Reset forms for the new case
     // The phase will be determined by caseStore progress, which is re-evaluated by isPostAiPhase
-    await fetchData(); // Fetch data for the new case
+    // Ensure progress loaded for new case before fetching so phase detection is correct
+    if (!caseStore.cases.length && userId.value) {
+      await caseStore.loadCases();
+    } else if (userId.value) {
+      // Make sure assessments loaded at least once (idempotent)
+      await caseStore.loadAssessmentsAndProgress(userId.value);
+    }
+    await fetchData(); // Fetch data for the new case after ensuring progress
   }
 }, { immediate: true });
 
@@ -329,6 +342,21 @@ watch(isPostAiPhase, async (newPhase, oldPhase) => {
       await fetchData();
   }
 }, { immediate: false }); // `immediate: false` to avoid running on initial load before route watcher
+
+// Ensure cases & assessments are loaded on direct navigation / refresh
+onMounted(async () => {
+  if (!userId.value) return; // wait for user login if needed
+  if (!caseStore.cases.length) {
+    await caseStore.loadCases();
+  } else {
+    // Still ensure assessments loaded (idempotent)
+    await caseStore.loadAssessmentsAndProgress(userId.value);
+  }
+  // After loading, if URL explicitly has phase=post and preCompleted true, re-run fetch to include AI outputs
+  if (route.query.phase === 'post' && isPostAiPhase.value) {
+    await fetchData();
+  }
+});
 
 // --- Submission Logic ---
 const handleSubmit = async () => {

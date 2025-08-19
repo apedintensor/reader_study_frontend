@@ -5,19 +5,19 @@
       <div class="grid">
         <div class="col-12 md:col-4">
           <div class="field-display">
-            <label class="font-semibold">Rank 1 Diagnosis:</label>
+            <span class="field-label font-semibold">Rank 1 Diagnosis:</span>
             <div class="value">{{ getDiagnosisName(assessmentData.diagnosisRank1Id) }}</div>
           </div>
         </div>
         <div class="col-12 md:col-4">
           <div class="field-display">
-            <label class="font-semibold">Rank 2 Diagnosis:</label>
+            <span class="field-label font-semibold">Rank 2 Diagnosis:</span>
             <div class="value">{{ getDiagnosisName(assessmentData.diagnosisRank2Id) }}</div>
           </div>
         </div>
         <div class="col-12 md:col-4">
           <div class="field-display">
-            <label class="font-semibold">Rank 3 Diagnosis:</label>
+            <span class="field-label font-semibold">Rank 3 Diagnosis:</span>
             <div class="value">{{ getDiagnosisName(assessmentData.diagnosisRank3Id) }}</div>
           </div>
         </div>
@@ -29,7 +29,7 @@
       <div class="grid">
         <div class="col-12 md:col-6">
           <div class="field-display">
-            <label class="font-semibold">Confidence in Top Diagnosis:</label>
+            <span class="field-label font-semibold">Confidence in Top Diagnosis:</span>
             <div class="value">
               <div class="flex align-items-center gap-2">
                 <Tag :value="assessmentData.confidenceScore" />
@@ -40,7 +40,7 @@
         </div>
         <div class="col-12 md:col-6">
           <div class="field-display">
-            <label class="font-semibold">Certainty of Management Plan:</label>
+            <span class="field-label font-semibold">Certainty of Management Plan:</span>
             <div class="value">
               <div class="flex align-items-center gap-2">
                 <Tag :value="assessmentData.certaintyScore" />
@@ -57,13 +57,13 @@
       <div class="grid">
         <div class="col-12">
           <div class="field-display">
-            <label class="font-semibold">Management Strategy:</label>
+            <span class="field-label font-semibold">Management Strategy:</span>
             <div class="value">{{ getManagementStrategyName(assessmentData.managementStrategyId) }}</div>
           </div>
         </div>
         <div v-if="assessmentData.managementNotes" class="col-12">
           <div class="field-display">
-            <label class="font-semibold">Management Notes:</label>
+            <span class="field-label font-semibold">Management Notes:</span>
             <div class="value notes">{{ assessmentData.managementNotes }}</div>
           </div>
         </div>
@@ -76,7 +76,7 @@
         <div class="grid">
           <div class="col-12 md:col-4">
             <div class="field-display">
-              <label class="font-semibold">Changed Primary Diagnosis:</label>
+              <span class="field-label font-semibold">Changed Primary Diagnosis:</span>
               <div class="value">
                 <Tag :value="assessmentData.changeDiagnosis ? 'Yes' : 'No'" 
                      :severity="assessmentData.changeDiagnosis ? 'warning' : 'success'" />
@@ -85,7 +85,7 @@
           </div>
           <div class="col-12 md:col-4">
             <div class="field-display">
-              <label class="font-semibold">Changed Management Plan:</label>
+              <span class="field-label font-semibold">Changed Management Plan:</span>
               <div class="value">
                 <Tag :value="assessmentData.changeManagement ? 'Yes' : 'No'" 
                      :severity="assessmentData.changeManagement ? 'warning' : 'success'" />
@@ -94,7 +94,7 @@
           </div>
           <div class="col-12 md:col-4">
             <div class="field-display">
-              <label class="font-semibold">AI Usefulness:</label>
+              <span class="field-label font-semibold">AI Usefulness:</span>
               <div class="value">
                 <Tag :value="getAiUsefulnessLabel(assessmentData.aiUsefulness)" 
                      :severity="getAiUsefulnessSeverity(assessmentData.aiUsefulness)" />

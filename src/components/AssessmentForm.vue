@@ -8,14 +8,16 @@
         <Fieldset legend="Differential Diagnoses (Top 3)" class="mb-4">
           <div class="grid formgrid">
             <div class="field col-12">
-              <label for="diag1">Rank 1 Diagnosis</label>
+              <label id="diag1-label">Rank 1 Diagnosis</label>
               <Dropdown id="diag1"
+                        name="diag1"
                         v-model="formData.diagnosisRank1Id"
                         :options="diagnosisTerms"
                         optionLabel="name"
                         optionValue="id"
                         placeholder="Select Rank 1 Diagnosis"
                         class="w-full"
+                        :aria-labelledby="'diag1-label'"
                         :class="{'p-invalid': submitted && !formData.diagnosisRank1Id}"
                         filter
                         required
@@ -23,14 +25,16 @@
               <small v-if="submitted && !formData.diagnosisRank1Id" class="p-error">Rank 1 diagnosis is required.</small>
             </div>
             <div class="field col-12">
-              <label for="diag2">Rank 2 Diagnosis</label>
+              <label id="diag2-label">Rank 2 Diagnosis</label>
               <Dropdown id="diag2"
+                        name="diag2"
                         v-model="formData.diagnosisRank2Id"
                         :options="diagnosisTerms"
                         optionLabel="name"
                         optionValue="id"
                         placeholder="Select Rank 2 Diagnosis"
                         class="w-full"
+                        :aria-labelledby="'diag2-label'"
                         :class="{'p-invalid': submitted && !formData.diagnosisRank2Id}"
                         filter
                         required
@@ -38,14 +42,16 @@
               <small v-if="submitted && !formData.diagnosisRank2Id" class="p-error">Rank 2 diagnosis is required.</small>
             </div>
             <div class="field col-12">
-              <label for="diag3">Rank 3 Diagnosis</label>
+              <label id="diag3-label">Rank 3 Diagnosis</label>
               <Dropdown id="diag3"
+                        name="diag3"
                         v-model="formData.diagnosisRank3Id"
                         :options="diagnosisTerms"
                         optionLabel="name"
                         optionValue="id"
                         placeholder="Select Rank 3 Diagnosis"
                         class="w-full"
+                        :aria-labelledby="'diag3-label'"
                         :class="{'p-invalid': submitted && !formData.diagnosisRank3Id}"
                         filter
                         required
@@ -58,23 +64,27 @@
         <Fieldset legend="Confidence & Certainty" class="mb-4">
           <div class="grid formgrid">
             <div class="field col-12 md:col-6">
-              <label for="confidence">Confidence in Top Diagnosis (1-5)</label>
+              <label id="confidence-label">Confidence in Top Diagnosis (1-5)</label>
               <SelectButton id="confidence"
+                            name="confidence"
                             v-model="formData.confidenceScore"
                             :options="scoreOptions"
                             optionLabel="label"
                             optionValue="value"
                             class="w-full"
+                            :aria-labelledby="'confidence-label'"
                             v-tooltip.bottom="getConfidenceLabel(formData.confidenceScore || 0)" />
             </div>
             <div class="field col-12 md:col-6">
-              <label for="certainty">Certainty of Management Plan (1-5)</label>
+              <label id="certainty-label">Certainty of Management Plan (1-5)</label>
               <SelectButton id="certainty"
+                            name="certainty"
                             v-model="formData.certaintyScore"
                             :options="scoreOptions"
                             optionLabel="label"
                             optionValue="value"
                             class="w-full"
+                            :aria-labelledby="'certainty-label'"
                             v-tooltip.bottom="getCertaintyLabel(formData.certaintyScore || 0)" />
             </div>
           </div>
@@ -83,25 +93,29 @@
         <Fieldset legend="Management Plan" class="mb-4">
           <div class="grid formgrid">
             <div class="field col-12">
-              <label for="managementStrategy">Management Strategy</label>
+              <label id="managementStrategy-label">Management Strategy</label>
               <Dropdown id="managementStrategy"
+                        name="managementStrategy"
                         v-model="formData.managementStrategyId"
                         :options="managementStrategies"
                         optionLabel="name"
                         optionValue="id"
                         placeholder="Select Management Strategy"
                         class="w-full"
+                        :aria-labelledby="'managementStrategy-label'"
                         :class="{'p-invalid': submitted && !formData.managementStrategyId}"
                         required
                         v-tooltip.top="'Select the most appropriate management strategy.'" />
               <small v-if="submitted && !formData.managementStrategyId" class="p-error">Management strategy is required.</small>
             </div>
             <div class="field col-12">
-              <label for="managementNotes">Management Notes (Optional)</label>
+              <label id="managementNotes-label">Management Notes (Optional)</label>
               <Textarea id="managementNotes"
+                        name="managementNotes"
                         v-model="formData.managementNotes"
                         rows="3"
                         class="w-full"
+                        :aria-labelledby="'managementNotes-label'"
                         placeholder="Enter any additional notes for the management plan."
                         v-tooltip.bottom="'Provide any specific details or rationale for your chosen management plan.'" />
             </div>
@@ -111,39 +125,42 @@
         <!-- Post-AI Specific Questions -->
         <div v-if="isPostAiPhase">
           <Divider />
-          <Fieldset legend="AI Impact Assessment" class="mt-4 mb-4">
-            <div class="grid formgrid">
+          <Fieldset legend="AI Impact Assessment" class="mt-4 mb-4 ai-impact">
+            <div class="grid formgrid ai-impact-grid">
               <div class="field col-12 md:col-6">
-                <label>Did AI suggestions change your primary diagnosis?</label>
-                <SelectButton v-model="formData.changeDiagnosis"
+                <label id="changeDiagnosis-label">Did AI suggestions change your primary diagnosis?</label>
+                <SelectButton id="changeDiagnosis" name="changeDiagnosis" v-model="formData.changeDiagnosis"
                               :options="changeOptions"
                               optionLabel="label"
                               optionValue="value"
                               class="w-full"
+                              :aria-labelledby="'changeDiagnosis-label'"
                               :class="{'p-invalid': submitted && formData.changeDiagnosis === null}"
                               required
                               v-tooltip.bottom="changeDiagnosisTooltipText" />
                 <small v-if="submitted && formData.changeDiagnosis === null" class="p-error">This field is required.</small>
               </div>
               <div class="field col-12 md:col-6">
-                <label>Did AI suggestions change your management plan?</label>
-                <SelectButton v-model="formData.changeManagement"
+                <label id="changeManagement-label">Did AI suggestions change your management plan?</label>
+                <SelectButton id="changeManagement" name="changeManagement" v-model="formData.changeManagement"
                               :options="changeOptions"
                               optionLabel="label"
                               optionValue="value"
                               class="w-full"
+                              :aria-labelledby="'changeManagement-label'"
                               :class="{'p-invalid': submitted && formData.changeManagement === null}"
                               required
                               v-tooltip.bottom="changeManagementTooltipText" />
                 <small v-if="submitted && formData.changeManagement === null" class="p-error">This field is required.</small>
               </div>
               <div class="field col-12">
-                <label>How useful were the AI suggestions?</label>
-                <SelectButton v-model="formData.aiUsefulness"
+                <label id="aiUsefulness-label">How useful were the AI suggestions?</label>
+                <SelectButton id="aiUsefulness" name="aiUsefulness" v-model="formData.aiUsefulness"
                               :options="aiUsefulnessOptions"
                               optionLabel="label"
                               optionValue="value"
                               class="w-full"
+                              :aria-labelledby="'aiUsefulness-label'"
                               :class="{'p-invalid': submitted && !formData.aiUsefulness}"
                               required
                               v-tooltip.bottom="'Rate the overall usefulness of the AI suggestions provided.'" />
@@ -260,5 +277,32 @@ defineEmits(['submit-form']);
 /* Ensure SelectButton options are visible and well-spaced */
 :deep(.p-selectbutton .p-button) {
     flex-grow: 1;
+}
+
+/* AI Impact alignment */
+.ai-impact-grid {
+  align-items: stretch;
+}
+.ai-impact-grid .field {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.ai-impact-grid label {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+:deep(.ai-impact .p-selectbutton) {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+:deep(.ai-impact .p-selectbutton .p-button) {
+  flex: 1 1 0;
+  text-wrap: balance;
+}
+@media (min-width: 768px) {
+  .ai-impact-grid .field { padding-right: .75rem; }
+  .ai-impact-grid .field:last-child { padding-right: 0; }
 }
 </style>

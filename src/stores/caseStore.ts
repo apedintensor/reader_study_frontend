@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import apiClient from '../api';
 import { useUserStore } from './userStore';
 
@@ -59,7 +59,8 @@ export const useCaseStore = defineStore('case', () => {
   const cases = ref<Case[]>([]);
   const currentIndex = ref<number>(0);
   const completedCases = ref<number[]>([]);
-  const caseProgress = ref<Record<number, CaseProgress>>({});
+  // Use reactive object instead of ref wrapper to avoid manual refresh hacks
+  const caseProgress = reactive<Record<number, CaseProgress>>({});
 
   // Fetch assessments and update progress
   async function loadAssessmentsAndProgress(userId: number) {
@@ -73,10 +74,10 @@ export const useCaseStore = defineStore('case', () => {
       console.log('User assessments:', userAssessments);
 
       // Initialize progress map if empty
-      if (Object.keys(caseProgress.value).length === 0) {
+    if (Object.keys(caseProgress).length === 0) {
         console.log('Initializing empty progress map for cases:', cases.value.map(c => c.id));
         cases.value.forEach(c => {
-          caseProgress.value[c.id] = {
+      caseProgress[c.id] = {
             caseId: c.id,
             preCompleted: false,
             postCompleted: false
@@ -92,8 +93,8 @@ export const useCaseStore = defineStore('case', () => {
           caseId: assessment.case_id
         });
 
-        if (!caseProgress.value[assessment.case_id]) {
-          caseProgress.value[assessment.case_id] = {
+        if (!caseProgress[assessment.case_id]) {
+          caseProgress[assessment.case_id] = {
             caseId: assessment.case_id,
             preCompleted: false,
             postCompleted: false
@@ -101,25 +102,24 @@ export const useCaseStore = defineStore('case', () => {
         }
 
         if (assessment.is_post_ai) {
-          caseProgress.value[assessment.case_id].postCompleted = true;
-          caseProgress.value[assessment.case_id].preCompleted = true;
+          caseProgress[assessment.case_id].postCompleted = true;
+          caseProgress[assessment.case_id].preCompleted = true;
           if (!completedCases.value.includes(assessment.case_id)) {
             completedCases.value.push(assessment.case_id);
           }
           console.log(`Case ${assessment.case_id} marked as fully completed (post-AI)`);
         } else {
-          caseProgress.value[assessment.case_id].preCompleted = true;
+          caseProgress[assessment.case_id].preCompleted = true;
           console.log(`Case ${assessment.case_id} marked as pre-AI completed`);
         }
       });
 
       console.log('Final progress state:', {
-        progress: caseProgress.value,
+  progress: caseProgress,
         completedCases: completedCases.value
       });
 
       saveProgressToCache();
-      refreshCaseProgress();
       return true;
     } catch (error) {
       console.error('Failed to load assessments:', error);
@@ -140,8 +140,8 @@ export const useCaseStore = defineStore('case', () => {
 
       // Initialize progress for all cases
       cases.value.forEach(c => {
-        if (!caseProgress.value[c.id]) {
-          caseProgress.value[c.id] = {
+        if (!caseProgress[c.id]) {
+          caseProgress[c.id] = {
             caseId: c.id,
             preCompleted: false,
             postCompleted: false
@@ -192,62 +192,75 @@ export const useCaseStore = defineStore('case', () => {
       return; 
     }
 
-    if (!caseProgress.value[caseId]) {
+    if (!caseProgress[caseId]) {
       // Initialize if somehow missing, though loadCases should handle this
-      caseProgress.value[caseId] = { caseId, preCompleted: false, postCompleted: false };
+      caseProgress[caseId] = { caseId, preCompleted: false, postCompleted: false };
       console.warn(`Initialized missing progress for case ${caseId} during markProgress`);
     }
-    
-    const progress = caseProgress.value[caseId];
+    const progress = caseProgress[caseId];
 
-    // Verify the assessment exists before marking progress in the store
-    // This prevents marking progress based on optimistic updates if the API call failed silently
-    const verified = await verifyAssessment(userId, caseId, isPostAi);
-
-    if (verified) {
-      if (isPostAi) {
-        // Mark post-AI complete (implies pre-AI is also complete)
-        if (!progress.postCompleted) {
-          progress.postCompleted = true;
-          progress.preCompleted = true; // Ensure pre is marked complete too
-          if (!completedCases.value.includes(caseId)) {
-            completedCases.value.push(caseId);
-          }
-          console.log(`Store: Marked case ${caseId} as post-AI complete.`);
+    // --- Optimistic update ---
+    if (isPostAi) {
+      if (!progress.postCompleted) {
+        progress.postCompleted = true;
+        progress.preCompleted = true; // ensure pre set
+        if (!completedCases.value.includes(caseId)) {
+          completedCases.value.push(caseId);
         }
-      } else {
-        // Mark pre-AI complete
-        if (!progress.preCompleted) {
-          progress.preCompleted = true;
-          console.log(`Store: Marked case ${caseId} as pre-AI complete.`);
-        }
+        console.log(`Optimistic: case ${caseId} marked post-AI complete.`);
       }
-      saveProgressToCache();
-      refreshCaseProgress(); // Trigger reactivity updates
     } else {
-      console.warn(`Store: Verification failed for case ${caseId}, isPostAi: ${isPostAi}. Progress not marked.`);
-      // Optionally, add a toast message here if verification failure should be user-visible
+      if (!progress.preCompleted) {
+        progress.preCompleted = true;
+        console.log(`Optimistic: case ${caseId} marked pre-AI complete.`);
+      }
     }
+  saveProgressToCache();
+
+    // --- Background verification (non-blocking) ---
+    verifyAssessment(userId, caseId, isPostAi)
+      .then(exists => {
+        if (!exists) {
+          console.warn(`Verification failed; reverting optimistic flag for case ${caseId} (isPostAi=${isPostAi}).`);
+          const p = caseProgress[caseId];
+          if (p) {
+            if (isPostAi) {
+              p.postCompleted = false; // keep pre if it was legitimately completed earlier
+            } else {
+              p.preCompleted = false;
+              // If pre reverted, also ensure post is false
+              p.postCompleted = false;
+              const idx = completedCases.value.indexOf(caseId);
+              if (idx !== -1) completedCases.value.splice(idx, 1);
+            }
+            saveProgressToCache();
+          }
+        } else {
+          console.log(`Verification success for case ${caseId} (isPostAi=${isPostAi}).`);
+        }
+      })
+      .catch(err => {
+        console.warn('Background verify error (ignored):', err);
+      });
   }
 
-  function refreshCaseProgress() {
-    // This forces Vue's reactivity system to detect changes within the nested object
-    const currentProgress = { ...caseProgress.value };
-    caseProgress.value = {}; // Clear temporarily
-    caseProgress.value = currentProgress; // Assign back to trigger update
-    console.log('Store: Refreshed case progress state for reactivity.');
-  }
+  // refreshCaseProgress no longer needed with reactive caseProgress
+  function refreshCaseProgress() { /* noop retained for backward compatibility */ }
 
   function loadProgressFromCache() {
     const storedProgress = localStorage.getItem('caseProgress');
     if (storedProgress) {
       try {
-        caseProgress.value = JSON.parse(storedProgress);
+        const parsed = JSON.parse(storedProgress) as Record<number, CaseProgress>;
+        Object.keys(parsed).forEach(k => {
+          const num = Number(k);
+          caseProgress[num] = parsed[num];
+        });
         
         // Ensure all cases have a progress entry
         cases.value.forEach(c => {
-          if (!caseProgress.value[c.id]) {
-            caseProgress.value[c.id] = {
+          if (!caseProgress[c.id]) {
+            caseProgress[c.id] = {
               caseId: c.id,
               preCompleted: false,
               postCompleted: false
@@ -256,7 +269,7 @@ export const useCaseStore = defineStore('case', () => {
         });
 
         // Update completedCases for backward compatibility
-        completedCases.value = Object.values(caseProgress.value)
+  completedCases.value = Object.values(caseProgress)
           .filter(p => p.postCompleted)
           .map(p => p.caseId);
           
@@ -264,10 +277,10 @@ export const useCaseStore = defineStore('case', () => {
         saveProgressToCache();
       } catch (e) {
         console.error('Failed to parse case progress:', e);
-        caseProgress.value = {};
+  Object.keys(caseProgress).forEach(k => { delete caseProgress[Number(k)]; });
         // Initialize empty progress for all cases
         cases.value.forEach(c => {
-          caseProgress.value[c.id] = {
+          caseProgress[c.id] = {
             caseId: c.id,
             preCompleted: false,
             postCompleted: false
@@ -278,23 +291,19 @@ export const useCaseStore = defineStore('case', () => {
     } else {
       // If no stored progress, initialize for all cases
       cases.value.forEach(c => {
-        caseProgress.value[c.id] = {
-          caseId: c.id,
-          preCompleted: false,
-          postCompleted: false
-        };
+        caseProgress[c.id] = { caseId: c.id, preCompleted: false, postCompleted: false };
       });
       saveProgressToCache();
     }
   }
 
   function saveProgressToCache() {
-    localStorage.setItem('caseProgress', JSON.stringify(caseProgress.value));
+  localStorage.setItem('caseProgress', JSON.stringify(caseProgress));
   }
 
   function getIncompleteCases() {
     return cases.value.filter(c => {
-      const progress = caseProgress.value[c.id];
+  const progress = caseProgress[c.id];
       return !progress || !progress.postCompleted;
     });
   }
@@ -302,24 +311,24 @@ export const useCaseStore = defineStore('case', () => {
   function getNextIncompleteCase(): Case | null {
     // First, look for cases that need pre-AI assessment
     const preIncomplete = cases.value.find(c => {
-      const progress = caseProgress.value[c.id];
+  const progress = caseProgress[c.id];
       return !progress || !progress.preCompleted;
     });
     if (preIncomplete) return preIncomplete;
 
     // Then, look for cases that need post-AI assessment
     const postIncomplete = cases.value.find(c => {
-      const progress = caseProgress.value[c.id];
+  const progress = caseProgress[c.id];
       return progress?.preCompleted && !progress.postCompleted;
     });
     return postIncomplete || null;
   }
 
   function getCaseProgress(caseId: number): CaseProgress {
-    if (!caseProgress.value[caseId]) {
+    if (!caseProgress[caseId]) {
       const userId = userStore.user?.id;
       // Initialize with empty progress
-      caseProgress.value[caseId] = { 
+      caseProgress[caseId] = { 
         caseId, 
         preCompleted: false, 
         postCompleted: false 
@@ -329,17 +338,16 @@ export const useCaseStore = defineStore('case', () => {
       if (userId) {
         verifyAssessment(userId, caseId, false).then(preExists => {
           if (preExists) {
-            caseProgress.value[caseId].preCompleted = true;
+            caseProgress[caseId].preCompleted = true;
           }
           verifyAssessment(userId, caseId, true).then(postExists => {
             if (postExists) {
-              caseProgress.value[caseId].postCompleted = true;
-              caseProgress.value[caseId].preCompleted = true;
+              caseProgress[caseId].postCompleted = true;
+              caseProgress[caseId].preCompleted = true;
               if (!completedCases.value.includes(caseId)) {
                 completedCases.value.push(caseId);
               }
               saveProgressToCache();
-              refreshCaseProgress();
             }
           });
         });
@@ -347,7 +355,7 @@ export const useCaseStore = defineStore('case', () => {
 
       saveProgressToCache();
     }
-    return { ...caseProgress.value[caseId] };  // Return a copy to avoid mutation
+  return { ...caseProgress[caseId] };  // Return a copy to avoid mutation
   }
 
   const getCurrentCase = computed(() => {
@@ -361,7 +369,7 @@ export const useCaseStore = defineStore('case', () => {
     cases,
     currentIndex,
     completedCases,
-    caseProgress,
+  caseProgress,
     loadCases,
     loadAssessmentsAndProgress,
     markProgress, // Export the updated function
