@@ -132,6 +132,28 @@ The frontend interacts with a backend API for data fetching and submission.
 -   The OpenAPI specification can be found in [openapi.json](./docs/openapi.json).
 -   The Axios client is configured in `src/api/index.ts`.
 
+### Environment Configuration (API Base URL)
+
+The Axios client auto-detects the backend origin using this priority order:
+
+1. `VITE_API_BASE_URL` (preferred) – e.g. `https://your-backend.example.com`
+2. `VITE_API_BASE_URL_PROD` (legacy fallback)
+3. Development: empty string `''` so that the Vite dev proxy handles `/api/*`
+4. Production safety fallback: `https://reader-study.fly.dev`
+
+Rules:
+- Do NOT append `/api` to the value you set in the environment variable.
+- Frontend code must continue to call endpoints with the `/api` prefix (see `docs/API_ENDPOINT_RULES.md`).
+- In local development you normally do NOT set `VITE_API_BASE_URL`; leaving it unset preserves the proxy behavior defined in `vite.config.ts`.
+
+Set the variable on Fly.io (PowerShell example):
+
+```pwsh
+fly secrets set VITE_API_BASE_URL=https://your-backend-domain
+```
+
+After updating a Fly secret, trigger a new deployment (Fly restarts machines automatically on secret change).
+
 ## Documentation
 
 This project includes comprehensive documentation to guide development and understanding:

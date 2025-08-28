@@ -5,16 +5,24 @@ This document provides comprehensive guidelines for constructing API endpoint UR
 ## 🏗️ Backend API & Proxy Architecture
 
 ### Infrastructure Overview
-- **Backend FastAPI Server**: Runs on `http://localhost:8000`
-- **Frontend Vite Dev Server**: Uses proxy configuration for API routing
-- **Proxy Target**: All requests starting with `/api` are forwarded to the backend
-- **Path Transformation**: The `/api` prefix is removed before forwarding to backend
+- **Backend FastAPI Server (local)**: `http://localhost:8000`
+- **Frontend Vite Dev Server**: Uses a proxy configuration for API routing
+- **Proxy Target (Dev)**: Requests starting with `/api` are forwarded to the backend with the `/api` prefix stripped
+- **Production Resolution**: The base origin is taken from `VITE_API_BASE_URL` (or legacy `VITE_API_BASE_URL_PROD`), and requests still include `/api` in the path
 
-### Proxy Configuration
-The Vite development server (`vite.config.ts`) is configured to:
-1. Intercept all requests beginning with `/api`
-2. Remove the `/api` prefix from the URL path
-3. Forward the modified request to `http://localhost:8000`
+### Proxy & Environment Configuration
+The Vite development server (`vite.config.ts`) intercepts `/api/*` calls and rewrites them by removing the `/api` prefix before forwarding to `http://localhost:8000`.
+
+In production we do NOT rely on a proxy. Instead, the Axios client resolves its `baseURL` via this priority order:
+1. `VITE_API_BASE_URL`
+2. `VITE_API_BASE_URL_PROD` (legacy)
+3. (Dev only) empty string `''` to enable the dev proxy
+4. Safety fallback: `https://reader-study.fly.dev`
+
+Important:
+- The value of `VITE_API_BASE_URL` must NOT include `/api`.
+- Frontend calls must ALWAYS include the `/api` prefix in code (keeps dev/prod symmetric and avoids accidental absolute paths).
+- To bypass the proxy locally (not typical), set `VITE_API_BASE_URL=http://localhost:8000` and adjust rules accordingly (dropping `/api` usage) — this is discouraged because it fragments conventions.
 
 ## 📋 URL Construction Rules
 
@@ -110,8 +118,8 @@ GET  /api/ai_outputs/case/{id}  // AI predictions for case
 **Solution**: Always add `/api` prefix to all backend endpoint paths
 
 ### Pitfall #2: Inconsistent URL Formatting
-**Problem**: Mixing absolute and relative URLs
-**Solution**: Use relative URLs with `/api` prefix consistently
+**Problem**: Mixing absolute URLs (hard-coded origins) with relative ones
+**Solution**: Use relative URLs with the `/api` prefix; let the Axios baseURL + proxy/env handle origins
 
 ### Pitfall #3: Manual URL Construction
 **Problem**: Building URLs with string concatenation
@@ -162,6 +170,7 @@ const cases: CaseData[] = await apiClient.get('/api/cases/');
 
 - **OpenAPI Specification**: `docs/openapi.json` - Complete API documentation
 - **Vite Proxy Config**: `vite.config.ts` - Frontend proxy configuration
-- **API Client**: `src/api/index.ts` - Centralized HTTP client setup
+- **API Client**: `src/api/index.ts` - Centralized HTTP client setup & env fallback logic
+- **Environment Variable**: `VITE_API_BASE_URL` (preferred) sets production backend origin (no `/api` suffix)
 
 By following these rules and patterns, you ensure consistent API communication between the frontend and backend while maintaining clean, maintainable code that's easy to debug and extend.
