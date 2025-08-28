@@ -2,32 +2,54 @@ import axios from 'axios';
 
 // Base URL Strategy
 // -------------------------------------------------------------
-// DEV (vite dev server):
-//   - baseURL is '' so calls like apiClient.get('/api/cases') rely on the proxy in vite.config.ts
-// PROD (Fly.io or any static host):
-//   - Set VITE_API_BASE_URL_PROD to the backend root origin (no trailing slash)
-//   - Example: VITE_API_BASE_URL_PROD=https://reader-study.fly.dev
-//   - We provide a safe fallback to the Fly.io domain if the env var is missing, but emit a warning.
-// IMPORTANT:
-//   - Do NOT include /api in the base URL.
-//   - Always call endpoints with the /api prefix in component code per project rules.
+// We now prefer a single env var: VITE_API_BASE_URL (no trailing slash, no /api suffix).
+// For backward compatibility we still accept VITE_API_BASE_URL_PROD.
+// Requests in the app ALWAYS include the /api prefix (see docs/API_ENDPOINT_RULES.md).
+// In development we rely on the Vite proxy which strips /api before forwarding to the FastAPI backend.
+// Therefore in dev the safest baseURL is '' (empty) so relative calls go through the proxy.
+// -------------------------------------------------------------
+// If you want to BYPASS the proxy locally (not recommended unless you also update all paths):
+//   1. Set VITE_API_BASE_URL=http://localhost:8000
+//   2. Remove or adjust the /api rewrite in vite.config.ts
+//   3. Update API_ENDPOINT_RULES.md accordingly (endpoints would then need to DROP the /api prefix)
+// -------------------------------------------------------------
+// Fallback Order (first non-empty wins):
+//   1. VITE_API_BASE_URL
+//   2. VITE_API_BASE_URL_PROD (legacy)
+//   3. '' (dev only, to use proxy)
+//   4. https://reader-study.fly.dev (production safety fallback)
+// -------------------------------------------------------------
 
 const FALLBACK_FLY_BACKEND = 'https://reader-study.fly.dev';
-const envConfiguredBase = import.meta.env.VITE_API_BASE_URL_PROD as string | undefined;
-const productionApiRoot = envConfiguredBase && envConfiguredBase.trim().length > 0
-  ? envConfiguredBase.replace(/\/$/, '') // strip trailing slash if someone added it
-  : FALLBACK_FLY_BACKEND;
+const rawPrimary = (import.meta.env.VITE_API_BASE_URL as string | undefined) || (import.meta.env.VITE_API_BASE_URL_PROD as string | undefined);
 
-const localDevelopmentApiRoot = ''; // Vite proxy will handle the full path including /api
+function sanitize(origin?: string): string | undefined {
+  if (!origin) return undefined;
+  const trimmed = origin.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/\/$/, ''); // strip single trailing slash
+}
+
+let resolvedBase = sanitize(rawPrimary);
+
+if (!resolvedBase) {
+  if (import.meta.env.DEV) {
+    // Use proxy (empty string keeps relative /api/* requests unchanged so proxy can rewrite)
+    resolvedBase = '';
+  } else {
+    // Production safety fallback
+    resolvedBase = FALLBACK_FLY_BACKEND;
+    console.warn('[api] No VITE_API_BASE_URL provided; falling back to', FALLBACK_FLY_BACKEND);
+  }
+}
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.PROD ? productionApiRoot : localDevelopmentApiRoot,
+  baseURL: resolvedBase,
   headers: { 'Content-Type': 'application/json' },
 });
 
-if (import.meta.env.PROD && (!envConfiguredBase || envConfiguredBase === '')) {
-  // Provide visibility in production builds if the env var was not injected.
-  console.warn('[api] VITE_API_BASE_URL_PROD not set; using fallback:', FALLBACK_FLY_BACKEND);
+if (rawPrimary) {
+  console.info('[api] Using configured API base:', resolvedBase || '(relative via proxy)');
 }
 
 // Add request logging interceptor
