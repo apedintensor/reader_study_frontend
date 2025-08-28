@@ -4,14 +4,15 @@ import axios from 'axios';
 // -------------------------------------------------------------
 // We now prefer a single env var: VITE_API_BASE_URL (no trailing slash, no /api suffix).
 // For backward compatibility we still accept VITE_API_BASE_URL_PROD.
-// Requests in the app ALWAYS include the /api prefix (see docs/API_ENDPOINT_RULES.md).
-// In development we rely on the Vite proxy which strips /api before forwarding to the FastAPI backend.
-// Therefore in dev the safest baseURL is '' (empty) so relative calls go through the proxy.
+// Requests in the app ALWAYS include the /api prefix (see docs/API_ENDPOINT_RULES.md) and the backend
+// actually serves endpoints mounted under /api (e.g. /api/ping, /api/auth/jwt/login, /api/roles/).
+// In development we rely on the Vite proxy which forwards /api/* WITHOUT stripping the prefix now.
+// Therefore in dev the safest baseURL is '' (empty) so relative calls go through the proxy unchanged.
 // -------------------------------------------------------------
 // If you want to BYPASS the proxy locally (not recommended unless you also update all paths):
 //   1. Set VITE_API_BASE_URL=http://localhost:8000
-//   2. Remove or adjust the /api rewrite in vite.config.ts
-//   3. Update API_ENDPOINT_RULES.md accordingly (endpoints would then need to DROP the /api prefix)
+//   2. (Not recommended) set baseURL to that origin and DROP the /api prefix in your component calls.
+//      This would require updating docs and is discouraged for consistency.
 // -------------------------------------------------------------
 // Fallback Order (first non-empty wins):
 //   1. VITE_API_BASE_URL
@@ -56,6 +57,7 @@ if (rawPrimary) {
 apiClient.interceptors.request.use(
   (config) => {
   // No prefix manipulation: backend is expected to serve routes under /api in all environments.
+  // No path mutation: backend expects /api prefix.
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
