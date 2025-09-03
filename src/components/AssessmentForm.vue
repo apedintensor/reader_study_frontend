@@ -5,65 +5,66 @@
     </template>
     <template #content>
       <form @submit.prevent="$emit('submit-form')">
-        <Fieldset legend="Differential Diagnoses (Top 3)" class="mb-4">
+        <Fieldset legend="Diagnoses" class="mb-4">
           <div class="grid formgrid">
             <div class="field col-12">
-              <label id="diag1-label">Rank 1 Diagnosis</label>
-              <Dropdown id="diag1"
-                        name="diag1"
-                        v-model="formData.diagnosisRank1Id"
-                        :options="diagnosisTerms"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select Rank 1 Diagnosis"
-                        class="w-full"
-                        :aria-labelledby="'diag1-label'"
-                        :class="{'p-invalid': submitted && !formData.diagnosisRank1Id}"
-                        filter
-                        required
-                        v-tooltip.top="'Select the most likely diagnosis.'" />
-              <small v-if="submitted && !formData.diagnosisRank1Id" class="p-error">Rank 1 diagnosis is required.</small>
+              <label id="diag1-label">Primary Diagnosis (Rank 1)</label>
+              <DiagnosisAutocomplete
+                id="diag1"
+                v-model="diagnosisRank1Proxy"
+                :minChars="2"
+                :maxResults="8"
+                placeholder="Type to search (supports synonyms & typos)"
+                @select="term => handleSelect(term, 1)"
+                :disabled="submitting"
+              />
+              <small v-if="submitted && !formData.diagnosisRank1Text" class="p-error">Primary diagnosis required.</small>
             </div>
-            <div class="field col-12">
-              <label id="diag2-label">Rank 2 Diagnosis</label>
-              <Dropdown id="diag2"
-                        name="diag2"
-                        v-model="formData.diagnosisRank2Id"
-                        :options="diagnosisTerms"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select Rank 2 Diagnosis"
-                        class="w-full"
-                        :aria-labelledby="'diag2-label'"
-                        :class="{'p-invalid': submitted && !formData.diagnosisRank2Id}"
-                        filter
-                        required
-                        v-tooltip.top="'Select the second most likely diagnosis.'" />
-              <small v-if="submitted && !formData.diagnosisRank2Id" class="p-error">Rank 2 diagnosis is required.</small>
+            <div class="field col-12 md:col-6">
+              <label id="diag2-label">Differential (Rank 2, optional)</label>
+              <DiagnosisAutocomplete
+                id="diag2"
+                v-model="diagnosisRank2Proxy"
+                :minChars="2"
+                :maxResults="8"
+                placeholder="Optional secondary"
+                @select="term => handleSelect(term, 2)"
+                :disabled="submitting"
+              />
             </div>
-            <div class="field col-12">
-              <label id="diag3-label">Rank 3 Diagnosis</label>
-              <Dropdown id="diag3"
-                        name="diag3"
-                        v-model="formData.diagnosisRank3Id"
-                        :options="diagnosisTerms"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select Rank 3 Diagnosis"
-                        class="w-full"
-                        :aria-labelledby="'diag3-label'"
-                        :class="{'p-invalid': submitted && !formData.diagnosisRank3Id}"
-                        filter
-                        required
-                        v-tooltip.top="'Select the third most likely diagnosis.'" />
-              <small v-if="submitted && !formData.diagnosisRank3Id" class="p-error">Rank 3 diagnosis is required.</small>
+            <div class="field col-12 md:col-6">
+              <label id="diag3-label">Differential (Rank 3, optional)</label>
+              <DiagnosisAutocomplete
+                id="diag3"
+                v-model="diagnosisRank3Proxy"
+                :minChars="2"
+                :maxResults="8"
+                placeholder="Optional tertiary"
+                @select="term => handleSelect(term, 3)"
+                :disabled="submitting"
+              />
+            </div>
+          </div>
+        </Fieldset>
+
+        <Fieldset legend="Management Choices" class="mb-4">
+          <div class="grid formgrid aligned-grid">
+            <div class="field col-12 md:col-6 centered-field">
+              <label>Biopsy?</label>
+              <SelectButton v-model="formData.biopsyRecommended" :options="yesNoOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && formData.biopsyRecommended === null}" />
+              <small v-if="submitted && formData.biopsyRecommended === null" class="p-error">Select Yes or No.</small>
+            </div>
+            <div class="field col-12 md:col-6 centered-field">
+              <label>Refer to Dermatology?</label>
+              <SelectButton v-model="formData.referralRecommended" :options="yesNoOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && formData.referralRecommended === null}" />
+              <small v-if="submitted && formData.referralRecommended === null" class="p-error">Select Yes or No.</small>
             </div>
           </div>
         </Fieldset>
 
         <Fieldset legend="Confidence & Certainty" class="mb-4">
-          <div class="grid formgrid">
-            <div class="field col-12 md:col-6">
+          <div class="grid formgrid aligned-grid">
+            <div class="field col-12 md:col-6 centered-field">
               <label id="confidence-label">Confidence in Top Diagnosis (1-5)</label>
               <SelectButton id="confidence"
                             name="confidence"
@@ -75,7 +76,7 @@
                             :aria-labelledby="'confidence-label'"
                             v-tooltip.bottom="getConfidenceLabel(formData.confidenceScore || 0)" />
             </div>
-            <div class="field col-12 md:col-6">
+            <div class="field col-12 md:col-6 centered-field">
               <label id="certainty-label">Certainty of Management Plan (1-5)</label>
               <SelectButton id="certainty"
                             name="certainty"
@@ -90,37 +91,7 @@
           </div>
         </Fieldset>
 
-        <Fieldset legend="Management Plan" class="mb-4">
-          <div class="grid formgrid">
-            <div class="field col-12">
-              <label id="managementStrategy-label">Management Strategy</label>
-              <Dropdown id="managementStrategy"
-                        name="managementStrategy"
-                        v-model="formData.managementStrategyId"
-                        :options="managementStrategies"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select Management Strategy"
-                        class="w-full"
-                        :aria-labelledby="'managementStrategy-label'"
-                        :class="{'p-invalid': submitted && !formData.managementStrategyId}"
-                        required
-                        v-tooltip.top="'Select the most appropriate management strategy.'" />
-              <small v-if="submitted && !formData.managementStrategyId" class="p-error">Management strategy is required.</small>
-            </div>
-            <div class="field col-12">
-              <label id="managementNotes-label">Management Notes (Optional)</label>
-              <Textarea id="managementNotes"
-                        name="managementNotes"
-                        v-model="formData.managementNotes"
-                        rows="3"
-                        class="w-full"
-                        :aria-labelledby="'managementNotes-label'"
-                        placeholder="Enter any additional notes for the management plan."
-                        v-tooltip.bottom="'Provide any specific details or rationale for your chosen management plan.'" />
-            </div>
-          </div>
-        </Fieldset>
+  <!-- Management & diagnosis layout adjusted -->
 
         <!-- Post-AI Specific Questions -->
         <div v-if="isPostAiPhase">
@@ -188,9 +159,9 @@
 <script setup lang="ts">
 import Card from 'primevue/card';
 import Fieldset from 'primevue/fieldset';
-import Dropdown from 'primevue/dropdown';
 import SelectButton from 'primevue/selectbutton';
-import Textarea from 'primevue/textarea';
+import DiagnosisAutocomplete from './DiagnosisAutocomplete.vue';
+import { ref, computed } from 'vue';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 
@@ -204,19 +175,14 @@ interface DiagnosisTermRead {
   id: number;
 }
 
-interface ManagementStrategyRead {
-  id: number;
-  name: string;
-}
-
 interface FormData {
-  diagnosisRank1Id: number | null;
-  diagnosisRank2Id: number | null;
-  diagnosisRank3Id: number | null;
+  diagnosisRank1Text: string | null;
+  diagnosisRank2Text: string | null;
+  diagnosisRank3Text: string | null;
   confidenceScore: number;
-  managementStrategyId: number | null;
-  managementNotes: string;
   certaintyScore: number;
+  biopsyRecommended: boolean | null;
+  referralRecommended: boolean | null;
   // Post-AI specific fields - ensure they are optional or handled in parent
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -238,10 +204,9 @@ interface ChangeOption {
   value: boolean;
 }
 
-defineProps<{
+const props = defineProps<{
   formData: FormData;
   diagnosisTerms: DiagnosisTermRead[];
-  managementStrategies: ManagementStrategyRead[];
   scoreOptions: ScoreOption[];
   submitted: boolean;
   submitting: boolean;
@@ -252,7 +217,39 @@ defineProps<{
   getCertaintyLabel: (score: number) => string;
 }>();
 
-defineEmits(['submit-form']);
+const emit = defineEmits(['submit-form', 'select-diagnosis']);
+
+// Capture selected canonical objects for potential POST; emit upward too
+interface DiagnosisTermSuggestion { id: number; name: string; synonyms: string[] }
+const selectedRank1 = ref<DiagnosisTermSuggestion | null>(null);
+const selectedRank2 = ref<DiagnosisTermSuggestion | null>(null);
+const selectedRank3 = ref<DiagnosisTermSuggestion | null>(null);
+
+function handleSelect(term: DiagnosisTermSuggestion, rank: 1 | 2 | 3) {
+  if (rank === 1) selectedRank1.value = term;
+  else if (rank === 2) selectedRank2.value = term;
+  else selectedRank3.value = term;
+  emit('select-diagnosis', { rank, term });
+}
+
+const yesNoOptions = [
+  { label: 'Yes', value: true },
+  { label: 'No', value: false }
+];
+
+// Null-safe proxies for autocomplete (component expects string)
+const diagnosisRank1Proxy = computed({
+  get: () => props.formData.diagnosisRank1Text || '',
+  set: (v: string) => { props.formData.diagnosisRank1Text = v || null; }
+});
+const diagnosisRank2Proxy = computed({
+  get: () => props.formData.diagnosisRank2Text || '',
+  set: (v: string) => { props.formData.diagnosisRank2Text = v || null; }
+});
+const diagnosisRank3Proxy = computed({
+  get: () => props.formData.diagnosisRank3Text || '',
+  set: (v: string) => { props.formData.diagnosisRank3Text = v || null; }
+});
 
 // Register Tooltip directive locally if not globally registered
 // import { Tooltip } from 'primevue/tooltip'; // Already imported
@@ -304,5 +301,19 @@ defineEmits(['submit-form']);
 @media (min-width: 768px) {
   .ai-impact-grid .field { padding-right: .75rem; }
   .ai-impact-grid .field:last-child { padding-right: 0; }
+}
+
+/* Shared alignment for earlier sections */
+.aligned-grid { align-items: stretch; }
+.aligned-grid .field { display:flex; flex-direction:column; }
+.aligned-grid label { margin-bottom:.5rem; font-weight:500; }
+
+/* Centered variant for specific fields */
+.centered-field { align-items:center; text-align:center; }
+.centered-field label { text-align:center; width:100%; }
+:deep(.centered-field .p-selectbutton) { justify-content:center; }
+/* Constrain width a bit on large screens so buttons aren't overly wide */
+@media (min-width:768px) {
+  :deep(.centered-field .p-selectbutton) { max-width:320px; }
 }
 </style>

@@ -2,44 +2,10 @@ import { defineStore } from 'pinia';
 import { ref, reactive, computed } from 'vue';
 import apiClient from '../api';
 import { useUserStore } from './userStore';
+import { getActiveGame } from '../api/games';
+import { listBlockAssessments } from '../api/assessments'; // new phase-based endpoint (/api/assessment/...)
 
-// Updated interfaces for composite key structure
-interface Assessment {
-  user_id: number;
-  case_id: number;
-  is_post_ai: boolean;
-  created_at: string;
-  assessable_image_score?: number | null;
-  confidence_level_top1?: number | null;
-  management_confidence?: number | null;
-  certainty_level?: number | null;
-  ai_usefulness?: string | null;
-  change_diagnosis_after_ai?: boolean | null;
-  change_management_after_ai?: boolean | null;
-}
-
-interface AssessmentRead extends Assessment {
-  diagnoses: DiagnosisRead[];
-  management_plan?: ManagementPlanRead | null;
-}
-
-interface DiagnosisRead {
-  id: number;
-  assessment_user_id: number;
-  assessment_case_id: number;
-  assessment_is_post_ai: boolean;
-  diagnosis_id: number;
-  rank: number;
-}
-
-interface ManagementPlanRead {
-  id: number;
-  assessment_user_id: number;
-  assessment_case_id: number;
-  assessment_is_post_ai: boolean;
-  strategy_id: number;
-  free_text?: string | null;
-}
+// (Removed unused local assessment interface; using dynamic typing for now)
 
 interface Case {
   id: number;
@@ -56,6 +22,7 @@ interface CaseProgress {
 
 export const useCaseStore = defineStore('case', () => {
   const userStore = useUserStore();
+  // gameStore no longer required here after refactor (progress callbacks removed)
   const cases = ref<Case[]>([]);
   const currentIndex = ref<number>(0);
   const completedCases = ref<number[]>([]);
@@ -66,11 +33,15 @@ export const useCaseStore = defineStore('case', () => {
   async function loadAssessmentsAndProgress(userId: number) {
     try {
       console.log('Fetching assessments for user:', userId);
-      const response = await apiClient.get<Assessment[]>(`/api/assessments/user/${userId}`);
-      console.log('Raw assessments response:', response.data);
-
-      // No need to filter since the endpoint already returns user-specific assessments
-      const userAssessments = response.data;
+      // Determine current (or latest) block. If active game available use its block_index, else start with 0.
+      let blockIndex = 0;
+      try {
+        const active = await getActiveGame();
+        if (active && typeof active.block_index === 'number') blockIndex = active.block_index;
+      } catch { /* ignore if no active game */ }
+      const responseData = await listBlockAssessments(userId, blockIndex).catch(() => [] as any[]);
+      console.log('Raw block assessments response:', responseData);
+      const userAssessments = Array.isArray(responseData) ? responseData : [];
       console.log('User assessments:', userAssessments);
 
       // Initialize progress map if empty
@@ -85,32 +56,20 @@ export const useCaseStore = defineStore('case', () => {
         });
       }
 
-      // Update progress based on assessments
-      userAssessments.forEach(assessment => {
-        console.log(`Processing assessment for case ${assessment.case_id}:`, {
-          isPostAi: assessment.is_post_ai,
-          userId: assessment.user_id,
-          caseId: assessment.case_id
-        });
-
-        if (!caseProgress[assessment.case_id]) {
-          caseProgress[assessment.case_id] = {
-            caseId: assessment.case_id,
-            preCompleted: false,
-            postCompleted: false
-          };
+      // Update progress based on assessments (phase-based)
+      userAssessments.forEach((assessment: any) => {
+        // Need case_id, but new Assessment list returns assignment-level; backend block list should include assignment meta.
+        const caseIdFromAssignment = (assessment as any).case_id ?? (assessment as any).assignment_case_id ?? (assessment as any).assignment?.case_id;
+        if (!caseIdFromAssignment) return; // skip if cannot resolve
+        if (!caseProgress[caseIdFromAssignment]) {
+          caseProgress[caseIdFromAssignment] = { caseId: caseIdFromAssignment, preCompleted: false, postCompleted: false };
         }
-
-        if (assessment.is_post_ai) {
-          caseProgress[assessment.case_id].postCompleted = true;
-          caseProgress[assessment.case_id].preCompleted = true;
-          if (!completedCases.value.includes(assessment.case_id)) {
-            completedCases.value.push(assessment.case_id);
-          }
-          console.log(`Case ${assessment.case_id} marked as fully completed (post-AI)`);
-        } else {
-          caseProgress[assessment.case_id].preCompleted = true;
-          console.log(`Case ${assessment.case_id} marked as pre-AI completed`);
+        if (assessment.phase === 'POST') {
+          caseProgress[caseIdFromAssignment].postCompleted = true;
+          caseProgress[caseIdFromAssignment].preCompleted = true;
+          if (!completedCases.value.includes(caseIdFromAssignment)) completedCases.value.push(caseIdFromAssignment);
+        } else if (assessment.phase === 'PRE') {
+          caseProgress[caseIdFromAssignment].preCompleted = true;
         }
       });
 
@@ -123,6 +82,48 @@ export const useCaseStore = defineStore('case', () => {
       return true;
     } catch (error) {
       console.error('Failed to load assessments:', error);
+      return false;
+    }
+  }
+
+  // NEW: Aggregate assessments across multiple block indices to build full progress
+  async function loadAssessmentsAcrossBlocks(userId: number, blockIndices: number[]) {
+    try {
+      if (!Array.isArray(blockIndices) || !blockIndices.length) {
+        return loadAssessmentsAndProgress(userId); // fallback single block
+      }
+      // Initialize progress map if empty
+      if (Object.keys(caseProgress).length === 0) {
+        cases.value.forEach(c => {
+          caseProgress[c.id] = { caseId: c.id, preCompleted: false, postCompleted: false };
+        });
+      }
+      const unique = Array.from(new Set(blockIndices.filter(n=> typeof n === 'number' && n >= 0)));
+      const allAssessments: any[] = [];
+      await Promise.all(unique.map(async idx => {
+        try {
+          const res = await listBlockAssessments(userId, idx);
+          if (Array.isArray(res)) allAssessments.push(...res);
+        } catch {/* ignore individual block failures */}
+      }));
+      allAssessments.forEach((assessment: any) => {
+        const caseIdFromAssignment = (assessment as any).case_id ?? (assessment as any).assignment_case_id ?? (assessment as any).assignment?.case_id;
+        if (!caseIdFromAssignment) return;
+        if (!caseProgress[caseIdFromAssignment]) {
+          caseProgress[caseIdFromAssignment] = { caseId: caseIdFromAssignment, preCompleted: false, postCompleted: false };
+        }
+        if (assessment.phase === 'POST') {
+          caseProgress[caseIdFromAssignment].postCompleted = true;
+          caseProgress[caseIdFromAssignment].preCompleted = true;
+          if (!completedCases.value.includes(caseIdFromAssignment)) completedCases.value.push(caseIdFromAssignment);
+        } else if (assessment.phase === 'PRE') {
+          caseProgress[caseIdFromAssignment].preCompleted = true;
+        }
+      });
+      saveProgressToCache();
+      return true;
+    } catch (e) {
+      console.error('Failed to load multi-block assessments', e);
       return false;
     }
   }
@@ -159,30 +160,8 @@ export const useCaseStore = defineStore('case', () => {
     }
   }
 
-  async function verifyAssessment(userId: number, caseId: number, isPostAi: boolean): Promise<boolean> {
-    try {
-      console.log('Verifying assessment:', { userId, caseId, isPostAi });
-      // Get all assessments for this case
-      const response = await apiClient.get<AssessmentRead[]>(`/api/assessments/case/${caseId}`);
-      
-      // Filter for the current user and pre/post status
-      const hasAssessment = response.data.some(assessment => 
-        assessment.user_id === userId && 
-        assessment.is_post_ai === isPostAi
-      );
-      
-      console.log(`Assessment verification result for case ${caseId}:`, {
-        userId,
-        isPostAi,
-        exists: hasAssessment
-      });
-      
-      return hasAssessment;
-    } catch (error) {
-      console.error('Failed to verify assessment:', error);
-      return false;
-    }
-  }
+  // Legacy verification removed (old endpoint 404). New flow: rely on block list refresh after submit.
+  async function verifyAssessment(_userId: number, _caseId: number, _isPostAi: boolean): Promise<boolean> { return true; }
 
   // Renamed and modified function to handle both pre and post AI progress updates
   async function markProgress(caseId: number, isPostAi: boolean) {
@@ -217,31 +196,7 @@ export const useCaseStore = defineStore('case', () => {
     }
   saveProgressToCache();
 
-    // --- Background verification (non-blocking) ---
-    verifyAssessment(userId, caseId, isPostAi)
-      .then(exists => {
-        if (!exists) {
-          console.warn(`Verification failed; reverting optimistic flag for case ${caseId} (isPostAi=${isPostAi}).`);
-          const p = caseProgress[caseId];
-          if (p) {
-            if (isPostAi) {
-              p.postCompleted = false; // keep pre if it was legitimately completed earlier
-            } else {
-              p.preCompleted = false;
-              // If pre reverted, also ensure post is false
-              p.postCompleted = false;
-              const idx = completedCases.value.indexOf(caseId);
-              if (idx !== -1) completedCases.value.splice(idx, 1);
-            }
-            saveProgressToCache();
-          }
-        } else {
-          console.log(`Verification success for case ${caseId} (isPostAi=${isPostAi}).`);
-        }
-      })
-      .catch(err => {
-        console.warn('Background verify error (ignored):', err);
-      });
+  // Background verification removed; instead we will refresh block assessments lazily via loadAssessmentsAndProgress (caller can do this after submit if needed)
   }
 
   // refreshCaseProgress no longer needed with reactive caseProgress
@@ -372,6 +327,7 @@ export const useCaseStore = defineStore('case', () => {
   caseProgress,
     loadCases,
     loadAssessmentsAndProgress,
+  loadAssessmentsAcrossBlocks,
     markProgress, // Export the updated function
     refreshCaseProgress,
     saveProgressToCache,

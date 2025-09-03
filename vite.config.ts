@@ -10,8 +10,9 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        // IMPORTANT: Do NOT rewrite; backend actually serves /api/* paths.
-        // Leaving the prefix intact avoids 404s (previous rewrite stripped it).
+        // Backend no longer includes the /api prefix; strip it so existing frontend
+        // calls like /api/cases -> /cases, /api/assessment -> /assessment, etc.
+        rewrite: (path) => path.replace(/^\/api/, ''),
       }
     }
   },

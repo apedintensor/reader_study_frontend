@@ -109,63 +109,7 @@
       </div>
     </div>
 
-    <!-- Management Strategy Comparison -->
-    <div class="comparison-section mb-4">
-      <h3 class="text-xl font-semibold mb-3 flex align-items-center gap-2">
-        <i class="pi pi-cog"></i>
-        Management Strategy Comparison
-      </h3>
-      <div class="grid">
-        <div class="col-12 md:col-6">
-          <Card class="comparison-card">
-            <template #title>
-              <div class="flex align-items-center gap-2">
-                <i class="pi pi-user text-primary"></i>
-                <span>Pre-AI Management</span>
-              </div>
-            </template>
-            <template #content>
-              <div class="management-display">
-                <div class="strategy-item">
-                  <strong>Strategy:</strong>
-                  <span>{{ getManagementStrategyName(preAiData.managementStrategyId) }}</span>
-                </div>
-                <div v-if="preAiData.managementNotes" class="notes-item">
-                  <strong>Notes:</strong>
-                  <p>{{ preAiData.managementNotes }}</p>
-                </div>
-              </div>
-            </template>
-          </Card>
-        </div>
-        <div class="col-12 md:col-6">
-          <Card class="comparison-card">
-            <template #title>
-              <div class="flex align-items-center gap-2">
-                <i class="pi pi-android text-primary"></i>
-                <span>Post-AI Management</span>
-                <Tag v-if="isManagementChanged()" 
-                     value="Changed" 
-                     severity="warning" 
-                     icon="pi pi-exclamation-triangle" />
-              </div>
-            </template>
-            <template #content>
-              <div class="management-display">
-                <div class="strategy-item" :class="{ 'changed': postAiData.managementStrategyId !== preAiData.managementStrategyId }">
-                  <strong>Strategy:</strong>
-                  <span>{{ getManagementStrategyName(postAiData.managementStrategyId) }}</span>
-                </div>
-                <div v-if="postAiData.managementNotes" class="notes-item" :class="{ 'changed': postAiData.managementNotes !== preAiData.managementNotes }">
-                  <strong>Notes:</strong>
-                  <p>{{ postAiData.managementNotes }}</p>
-                </div>
-              </div>
-            </template>
-          </Card>
-        </div>
-      </div>
-    </div>
+  <!-- (Management Strategy Comparison removed) -->
 
     <!-- Summary Statistics -->
     <div class="comparison-section">
@@ -225,18 +169,12 @@ interface DiagnosisTermRead {
   id: number;
 }
 
-interface ManagementStrategyRead {
-  id: number;
-  name: string;
-}
 
 interface AssessmentData {
   diagnosisRank1Id: number | null;
   diagnosisRank2Id: number | null;
   diagnosisRank3Id: number | null;
   confidenceScore: number;
-  managementStrategyId: number | null;
-  managementNotes: string;
   certaintyScore: number;
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -247,7 +185,6 @@ const props = defineProps<{
   preAiData: AssessmentData | null;
   postAiData: AssessmentData | null;
   diagnosisTerms: DiagnosisTermRead[];
-  managementStrategies: ManagementStrategyRead[];
 }>();
 
 // Helper functions
@@ -257,11 +194,7 @@ const getDiagnosisName = (diagnosisId: number | null): string => {
   return diagnosis ? diagnosis.name : 'Unknown diagnosis';
 };
 
-const getManagementStrategyName = (strategyId: number | null): string => {
-  if (!strategyId) return 'Not selected';
-  const strategy = props.managementStrategies.find(s => s.id === strategyId);
-  return strategy ? strategy.name : 'Unknown strategy';
-};
+// Management strategy fields deprecated
 
 // Helper accessors for aligned grid
 const getPreRank = (rank: number): string => {
@@ -297,11 +230,7 @@ const isDiagnosisChanged = (rank: number): boolean => {
   return preValue !== postValue;
 };
 
-const isManagementChanged = (): boolean => {
-  if (!props.preAiData || !props.postAiData) return false;
-  return props.preAiData.managementStrategyId !== props.postAiData.managementStrategyId ||
-         props.preAiData.managementNotes !== props.postAiData.managementNotes;
-};
+const isManagementChanged = (): boolean => false;
 
 const changedDiagnosesCount = computed(() => {
   let count = 0;

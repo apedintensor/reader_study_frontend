@@ -45,18 +45,6 @@
               </div>
 
               <div class="col-12 md:col-6">
-                <label for="gender" class="field-label with-icon"><i class="pi pi-user" /> Gender</label>
-                <Dropdown 
-                  id="gender" 
-                  v-model="formData.gender" 
-                  :options="genders" 
-                  class="w-full"
-                  placeholder="Select gender" 
-                  required 
-                />
-              </div>
-
-              <div class="col-12 md:col-6">
                 <label for="exp" class="field-label with-icon"><i class="pi pi-briefcase" /> Years Clinical Experience</label>
                 <InputNumber 
                   id="exp" 
@@ -156,7 +144,6 @@ const formData = reactive({
   email: '',
   password: '',
   age_bracket: null as string | null,
-  gender: null as string | null,
   years_experience: null as number | null,
   years_derm_experience: null as number | null,
   role_id: null as number | null
@@ -166,8 +153,7 @@ const loading = ref(false);
 const rolesLoading = ref(false); // Loading state for roles dropdown
 const roles = ref<Role[]>([]); // To store fetched roles
 
-// Static data for other dropdowns
-const genders = ref(['Male', 'Female', 'Other', 'Prefer not to say']);
+// (gender field removed)
 
 // Fetch roles when the component mounts
 onMounted(async () => {

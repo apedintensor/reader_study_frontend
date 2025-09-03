@@ -41,7 +41,7 @@
                        :showThumbnails="false"
                        containerStyle="max-width: 100%">
                 <template #item="slotProps">
-                  <img :src="slotProps.item.image_url" 
+                  <img :src="slotProps.item.full_url || slotProps.item.image_url" 
                        :alt="`Case ${caseId} Image`" 
                        style="width: 100%; height: 400px; object-fit: contain;" />
                 </template>
@@ -53,33 +53,7 @@
           </template>
         </Card>
 
-        <!-- Case Metadata -->
-        <Card class="mb-4">
-          <template #title>Case Metadata</template>
-          <template #content>
-            <div v-if="metadata" class="metadata-grid">
-              <div v-if="metadata.age !== null && metadata.age !== undefined" class="metadata-item">
-                <strong>Age:</strong> <span>{{ metadata.age }}</span>
-              </div>
-              <div v-if="metadata.gender" class="metadata-item">
-                <strong>Gender:</strong> <span>{{ metadata.gender }}</span>
-              </div>
-              <div v-if="metadata.fever_history !== null && metadata.fever_history !== undefined" class="metadata-item">
-                <strong>Fever History:</strong> <span>{{ metadata.fever_history ? 'Yes' : 'No' }}</span>
-              </div>
-              <div v-if="metadata.psoriasis_history !== null && metadata.psoriasis_history !== undefined" class="metadata-item">
-                <strong>Psoriasis History:</strong> <span>{{ metadata.psoriasis_history ? 'Yes' : 'No' }}</span>
-              </div>
-              <div v-if="metadata.other_notes" class="metadata-item notes-section">
-                <strong>Other Notes:</strong>
-                <p class="mt-2">{{ metadata.other_notes }}</p>
-              </div>
-            </div>
-            <div v-else class="text-600">
-              No metadata available for this case.
-            </div>
-          </template>
-        </Card>
+
 
         <!-- AI Predictions -->
         <Card class="mb-4">
@@ -127,8 +101,7 @@
             <AssessmentComparison 
               :pre-ai-data="preAiData"
               :post-ai-data="postAiData"
-              :diagnosis-terms="diagnosisTerms"
-              :management-strategies="managementStrategies" />
+              :diagnosis-terms="diagnosisTerms" />
           </template>
         </Card>
 
@@ -144,7 +117,6 @@
             <ReviewAssessmentDisplay 
               :assessment-data="preAiData"
               :diagnosis-terms="diagnosisTerms"
-              :management-strategies="managementStrategies"
               phase="Pre-AI" />
           </template>
         </Card>
@@ -161,7 +133,6 @@
             <ReviewAssessmentDisplay 
               :assessment-data="postAiData"
               :diagnosis-terms="diagnosisTerms"
-              :management-strategies="managementStrategies"
               phase="Post-AI"
               :show-ai-impact="true" />
           </template>
@@ -176,6 +147,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
 import apiClient from '../api';
+import { useGamesStore } from '../stores/gamesStore';
+import { listAssignmentAssessments } from '../api/assessments';
 
 // Import components
 import Card from 'primevue/card';
@@ -193,28 +166,15 @@ import AssessmentComparison from '../components/AssessmentComparison.vue';
 // Interfaces
 interface ImageRead {
   id: number;
-  image_url: string;
+  image_url: string; // relative path (legacy)
+  full_url?: string; // absolute URL provided by backend
   case_id: number;
 }
 
-interface CaseMetaDataRead {
-  id: number;
-  case_id: number;
-  age?: number | null;
-  gender?: string | null;
-  fever_history?: boolean | null;
-  psoriasis_history?: boolean | null;
-  other_notes?: string | null;
-}
 
 interface DiagnosisTermRead {
   name: string;
   id: number;
-}
-
-interface ManagementStrategyRead {
-  id: number;
-  name: string;
 }
 
 interface AIOutputRead {
@@ -231,8 +191,6 @@ interface AssessmentData {
   diagnosisRank2Id: number | null;
   diagnosisRank3Id: number | null;
   confidenceScore: number;
-  managementStrategyId: number | null;
-  managementNotes: string;
   certaintyScore: number;
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -243,6 +201,7 @@ interface AssessmentData {
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const gamesStore = useGamesStore();
 
 const caseId = computed(() => parseInt(route.params.id as string, 10));
 const userId = computed(() => userStore.user?.id);
@@ -251,9 +210,7 @@ const userId = computed(() => userStore.user?.id);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const images = ref<ImageRead[]>([]);
-const metadata = ref<CaseMetaDataRead | null>(null);
 const diagnosisTerms = ref<DiagnosisTermRead[]>([]);
-const managementStrategies = ref<ManagementStrategyRead[]>([]);
 const aiOutputs = ref<AIOutputRead[]>([]);
 const preAiData = ref<AssessmentData | null>(null);
 const postAiData = ref<AssessmentData | null>(null);
@@ -280,17 +237,14 @@ const fetchData = async () => {
       await loadFromAPI();
     }
 
-    // Always fetch supplementary data (case details, strategies, terms, AI outputs)
-    const [caseResponse, strategiesResponse, termsResponse] = await Promise.all([
+    // Always fetch supplementary data (case details, terms, AI outputs)
+    const [caseResponse, termsResponse] = await Promise.all([
       apiClient.get(`/api/cases/${caseId.value}`),
-      apiClient.get('/api/management_strategies/'),
       apiClient.get('/api/diagnosis_terms/')
     ]);
 
     const caseData = caseResponse.data;
-    metadata.value = caseData.case_metadata_relation;
     images.value = caseData.images || [];
-    managementStrategies.value = strategiesResponse.data;
     diagnosisTerms.value = termsResponse.data;
 
     // Load AI outputs
@@ -341,55 +295,36 @@ const loadFromLocalStorage = (): boolean => {
 
 const loadFromAPI = async (): Promise<void> => {
   try {
-    // First, get the specific assessments using the correct endpoint
-    const preAiAssessmentResponse = await apiClient.get(`/api/assessments/${userId.value}/${caseId.value}/false`);
-    const postAiAssessmentResponse = await apiClient.get(`/api/assessments/${userId.value}/${caseId.value}/true`);
-
-    const preAiAssessment = preAiAssessmentResponse.data;
-    const postAiAssessment = postAiAssessmentResponse.data;
-
-    // Process pre-AI assessment data
-    if (preAiAssessment) {
-      // Fetch diagnoses using the assessment data (the assessment should include diagnoses as per schema)
-      const preAiDiagnoses = preAiAssessment.diagnoses || [];
-      
-      // Fetch management plan using the correct endpoint
-      const preAiManagementResponse = await apiClient.get(`/api/management_plans/assessment/${userId.value}/${caseId.value}/false`);
-      const preAiManagement = preAiManagementResponse.data;
-
-      // Transform API data to match our frontend format
+    // locate assignment for this case
+    const assignment = Object.values(gamesStore.assignmentsByBlock || {})
+      .flat()
+      .find((a: any) => a.case_id === caseId.value && a.user_id === userId.value);
+    if (!assignment) {
+      console.warn('No assignment found while loading review page assessments.');
+      return;
+    }
+    const assessments = await listAssignmentAssessments(assignment.id);
+    const pre = assessments.find(a => a.phase === 'PRE');
+    const post = assessments.find(a => a.phase === 'POST');
+    if (pre) {
       preAiData.value = {
-        diagnosisRank1Id: preAiDiagnoses.find((d: any) => d.rank === 1)?.diagnosis_id || null,
-        diagnosisRank2Id: preAiDiagnoses.find((d: any) => d.rank === 2)?.diagnosis_id || null,
-        diagnosisRank3Id: preAiDiagnoses.find((d: any) => d.rank === 3)?.diagnosis_id || null,
-        confidenceScore: preAiAssessment.confidence_level_top1 || 3,
-        managementStrategyId: preAiManagement?.strategy_id || null,
-        managementNotes: preAiManagement?.free_text || '',
-        certaintyScore: preAiAssessment.certainty_level || 3
+        diagnosisRank1Id: null,
+        diagnosisRank2Id: null,
+        diagnosisRank3Id: null,
+        confidenceScore: pre.diagnostic_confidence || 3,
+        certaintyScore: pre.management_confidence || 3
       };
     }
-
-    // Process post-AI assessment data
-    if (postAiAssessment) {
-      // Fetch diagnoses using the assessment data (the assessment should include diagnoses as per schema)
-      const postAiDiagnoses = postAiAssessment.diagnoses || [];
-      
-      // Fetch management plan using the correct endpoint
-      const postAiManagementResponse = await apiClient.get(`/api/management_plans/assessment/${userId.value}/${caseId.value}/true`);
-      const postAiManagement = postAiManagementResponse.data;
-
-      // Transform API data to match our frontend format
+    if (post) {
       postAiData.value = {
-        diagnosisRank1Id: postAiDiagnoses.find((d: any) => d.rank === 1)?.diagnosis_id || null,
-        diagnosisRank2Id: postAiDiagnoses.find((d: any) => d.rank === 2)?.diagnosis_id || null,
-        diagnosisRank3Id: postAiDiagnoses.find((d: any) => d.rank === 3)?.diagnosis_id || null,
-        confidenceScore: postAiAssessment.confidence_level_top1 || 3,
-        managementStrategyId: postAiManagement?.strategy_id || null,
-        managementNotes: postAiManagement?.free_text || '',
-        certaintyScore: postAiAssessment.certainty_level || 3,
-        changeDiagnosis: postAiAssessment.change_diagnosis_after_ai || null,
-        changeManagement: postAiAssessment.change_management_after_ai || null,
-        aiUsefulness: postAiAssessment.ai_usefulness || null
+        diagnosisRank1Id: null,
+        diagnosisRank2Id: null,
+        diagnosisRank3Id: null,
+        confidenceScore: post.diagnostic_confidence || 3,
+        certaintyScore: post.management_confidence || 3,
+        changeDiagnosis: post.changed_primary_diagnosis || null,
+        changeManagement: post.changed_management_plan || null,
+        aiUsefulness: post.ai_usefulness || null
       };
     }
   } catch (error) {

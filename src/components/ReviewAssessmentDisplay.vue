@@ -52,23 +52,7 @@
       </div>
     </Fieldset>
 
-    <!-- Management Plan Section -->
-    <Fieldset legend="Management Plan" class="mb-4">
-      <div class="grid">
-        <div class="col-12">
-          <div class="field-display">
-            <span class="field-label font-semibold">Management Strategy:</span>
-            <div class="value">{{ getManagementStrategyName(assessmentData.managementStrategyId) }}</div>
-          </div>
-        </div>
-        <div v-if="assessmentData.managementNotes" class="col-12">
-          <div class="field-display">
-            <span class="field-label font-semibold">Management Notes:</span>
-            <div class="value notes">{{ assessmentData.managementNotes }}</div>
-          </div>
-        </div>
-      </div>
-    </Fieldset>
+  <!-- Management Plan Section removed (deprecated) -->
 
     <!-- AI Impact Assessment (Post-AI only) -->
     <div v-if="showAiImpact && assessmentData.changeDiagnosis !== undefined">
@@ -119,18 +103,12 @@ interface DiagnosisTermRead {
   id: number;
 }
 
-interface ManagementStrategyRead {
-  id: number;
-  name: string;
-}
 
 interface AssessmentData {
   diagnosisRank1Id: number | null;
   diagnosisRank2Id: number | null;
   diagnosisRank3Id: number | null;
   confidenceScore: number;
-  managementStrategyId: number | null;
-  managementNotes: string;
   certaintyScore: number;
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -140,7 +118,6 @@ interface AssessmentData {
 const props = defineProps<{
   assessmentData: AssessmentData | null;
   diagnosisTerms: DiagnosisTermRead[];
-  managementStrategies: ManagementStrategyRead[];
   phase: string;
   showAiImpact?: boolean;
 }>();
@@ -152,11 +129,7 @@ const getDiagnosisName = (diagnosisId: number | null): string => {
   return diagnosis ? diagnosis.name : 'Unknown diagnosis';
 };
 
-const getManagementStrategyName = (strategyId: number | null): string => {
-  if (!strategyId) return 'Not selected';
-  const strategy = props.managementStrategies.find(s => s.id === strategyId);
-  return strategy ? strategy.name : 'Unknown strategy';
-};
+// Management strategies removed
 
 const getConfidenceLabel = (score: number): string => {
   switch (score) {

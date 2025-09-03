@@ -45,8 +45,8 @@ export const useUserStore = defineStore('user', () => {
       return false;
     }
     try {
-      // Use the /api/auth/users/me endpoint as per openapi.json
-      const response = await apiClient.get<User>('/api/auth/users/me');
+  // Updated endpoint: backend now exposes /api/auth/me
+  const response = await apiClient.get<User>('/api/auth/me');
       user.value = response.data;
       localStorage.setItem('userData', JSON.stringify(user.value));
       console.log("Current user fetched:", user.value);
