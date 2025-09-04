@@ -117,20 +117,54 @@ Test files are located in the `cypress/e2e` directory. For more details on testi
 
 ## Key Features
 
--   User registration and JWT-based authentication.
--   Dashboard for case overview and progress tracking.
--   Multi-stage case assessment (Pre-AI and Post-AI).
--   Dynamic display of case images and metadata.
--   AI prediction visualization.
--   Session persistence and resume functionality.
--   Responsive UI using PrimeVue and PrimeFlex.
+Core workflow now revolves around short “Game” rounds (10-case blocks) instead of ad‑hoc per‑case navigation.
+
+- User registration and JWT-based authentication
+- Game-driven assessment flow: Start / Resume 10‑case rounds
+- Dual-phase assessment (Pre‑AI & Post‑AI) with deltas (Top1 / Top3 accuracy changes)
+- On‑demand game reports (fetched only when expanded) with per‑case ground truth vs predictions
+- Peer Accuracy metrics (aggregated comparison group) grouped alongside Your Accuracy
+- Global Game Progress card powered by `/api/game/progress` (total, completed, remaining)
+- Diagnosis term autocomplete with fuzzy local ranking (Fuse.js) + backend suggestion endpoint
+- AI prediction visualization and comparison tables
+- Resume incomplete game & continue where you left off
+- Responsive, dark‑friendly UI using PrimeVue 4 + PrimeFlex utilities
+- Strict endpoint prefixing & centralized Axios client with auth token injection
+
+### Recent Additions / Changes
+
+| Area | Update |
+|------|--------|
+| Terminology | “Block” renamed to “Game” across UI and code comments |
+| Progress | Local aggregation replaced by authoritative `/api/game/progress` endpoint |
+| Reports | Lazy (on‑expand) fetch with lightweight retry polling until ready |
+| Diagnosis Search | Added `/api/diagnosis_terms/suggest` integration + Fuse.js fuzzy highlighting |
+| UI Simplification | Removed legacy landing & available cases tables for a focused dashboard |
+| Accuracy Display | Consolidated Top3 correctness: any of the three matching GT is a single tick |
+| Deployment | Docker multi-stage build (Node build → Nginx serve) tuned for immutable static assets |
 
 ## API Integration
 
-The frontend interacts with a backend API for data fetching and submission.
--   API endpoint rules and conventions are documented in [API Endpoint Rules](./docs/API_ENDPOINT_RULES.md).
--   The OpenAPI specification can be found in [openapi.json](./docs/openapi.json).
--   The Axios client is configured in `src/api/index.ts`.
+All frontend calls MUST include the `/api` prefix (see `docs/API_ENDPOINT_RULES.md`). The Axios client (`src/api/index.ts`) manages:
+
+- Base origin resolution (env → fallback) – do **not** include `/api` in the env var
+- Auth bearer token injection from localStorage
+- Request / response logging (console)
+
+Primary endpoints in current workflow (subset):
+
+| Purpose | Method | Path |
+|---------|--------|------|
+| Game progress summary | GET | `/api/game/progress` |
+| List historical game reports | GET | `/api/game/reports` |
+| Single game report | GET | `/api/game/report/{block}` |
+| Advance / start next assignment | POST | `/api/game/next` or `/api/game/start` (backend variant) |
+| Diagnosis term list | GET | `/api/diagnosis_terms/` |
+| Diagnosis suggestions (search) | GET | `/api/diagnosis_terms/suggest?q=...` |
+| Cases | GET | `/api/cases/` |
+| Submit assessment (new model) | POST | `/api/assessments/` (if using new schema) |
+
+Refer to `docs/openapi.json` for the full surface.
 
 ### Environment Configuration (API Base URL)
 
@@ -153,6 +187,42 @@ fly secrets set VITE_API_BASE_URL=https://your-backend-domain
 ```
 
 After updating a Fly secret, trigger a new deployment (Fly restarts machines automatically on secret change).
+
+### Diagnosis Autocomplete Behavior
+
+1. Debounced query normalization (lowercase, diacritic strip, whitespace collapse)
+2. Backend suggestion fetch `/api/diagnosis_terms/suggest?q=...`
+3. Local Fuse.js fuzzy ranking + match highlighting
+4. Graceful fallback: if Fuse yields no hits, top N raw results surface
+
+If search seems to fail in production:
+- Confirm `VITE_API_BASE_URL` is set (no `/api` suffix)
+- Ensure CSP `connect-src` in `nginx.conf` permits backend origin (currently `'self' https:`); add explicit host if needed
+- Verify network calls show 200 OK for `/api/diagnosis_terms/suggest`
+
+## Deployment (Fly.io)
+
+Multi-stage Docker build:
+
+1. Build stage installs deps (`npm ci`), compiles TypeScript, runs Vite build
+2. Prunes devDependencies (`npm prune --omit=dev`)
+3. Final Nginx image serves `/dist` static output
+
+Key files:
+- `Dockerfile` – build pipeline
+- `nginx.conf` – SPA fallback + aggressive caching for hashed assets + CSP
+- `fly.toml` – Fly app config
+
+Deploy sequence:
+```pwsh
+# (optional) set / update API base origin
+fly secrets set VITE_API_BASE_URL=https://your-backend.example
+
+# build & release
+fly deploy
+```
+
+Cache invalidation: `index.html` is marked `no-cache`; hashed assets are immutable for 1 year.
 
 ## Documentation
 
