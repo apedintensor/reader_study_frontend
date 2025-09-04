@@ -162,6 +162,8 @@ function escapeHtml(str: string): string {
 }
 
 // --- Fetch Suggestions ---
+import apiClient from '../api';
+
 async function fetchSuggestions(query: string) {
   const norm = normalizeQuery(query);
   if (!norm || norm.length < props.minChars) {
@@ -178,9 +180,8 @@ async function fetchSuggestions(query: string) {
   abortCtrl = new AbortController();
   loading.value = true;
   try {
-    const resp = await fetch(`/api/diagnosis_terms/suggest?q=${encodeURIComponent(norm)}`, { signal: abortCtrl.signal });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const raw: unknown = await resp.json();
+  // Use centralized apiClient so baseURL / auth / env fallbacks apply (fixes production static hosting issue)
+  const { data: raw } = await apiClient.get<unknown>(`/api/diagnosis_terms/suggest`, { params: { q: norm }, signal: abortCtrl.signal as any });
     let data: DiagnosisTermSuggestion[] = [];
     if (Array.isArray(raw)) {
       data = (raw as RawSuggestion[]).map(r => ({
