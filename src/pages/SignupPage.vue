@@ -44,6 +44,21 @@
                 </div>
               </div>
 
+              <!-- Age Field (captured locally; backend uses age_bracket only) -->
+              <div class="col-12 md:col-6">
+                <label for="age" class="field-label with-icon"><i class="pi pi-user" /> Age</label>
+                <InputNumber
+                  id="age"
+                  v-model="formData.age"
+                  :min="0"
+                  :max="120"
+                  :step="1"
+                  showButtons
+                  class="w-full"
+                  required
+                />
+              </div>
+
               <div class="col-12 md:col-6">
                 <label for="exp" class="field-label with-icon"><i class="pi pi-briefcase" /> Years Clinical Experience</label>
                 <InputNumber 
@@ -95,8 +110,8 @@
                 />
 
                 <div class="text-center mt-4">
-                  <Divider align="center">
-                    <span class="text-600 font-medium">Already have an account?</span>
+                  <Divider align="center" class="auth-divider">
+                    <span class="divider-label">Already have an account?</span>
                   </Divider>
                   <router-link to="/login" class="no-underline">
                     <Button 
@@ -148,6 +163,7 @@ const formData = reactive({
   email: '',
   password: '',
   age_bracket: null as string | null,
+  age: null as number | null, // raw age captured from user (not sent directly to backend)
   years_experience: null as number | null,
   years_derm_experience: null as number | null,
   role_id: null as number | null
@@ -228,7 +244,7 @@ const handleSignup = async () => {
 .field-label { display:block; font-weight:600; margin-bottom:.4rem; font-size:.85rem; letter-spacing:.3px; }
 .field-label.with-icon i { margin-right:.4rem; font-size:.85rem; opacity:.8; }
 
-.input-wrapper { display:flex; align-items:center; gap:.65rem; padding:.75rem .9rem; background:var(--surface-overlay); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
+.input-wrapper { display:flex; align-items:center; gap:.65rem; padding:.75rem .9rem; background:var(--auth-input-bg, var(--surface-overlay)); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
 .input-wrapper i { color:var(--text-color-secondary); font-size:1rem; }
 .input-wrapper:focus-within { outline:2px solid var(--primary-color); outline-offset:2px; }
 
@@ -251,7 +267,21 @@ const handleSignup = async () => {
 
 :deep(.p-dropdown),
 :deep(.p-password),
-:deep(.p-inputnumber) { background: var(--surface-overlay); }
+:deep(.p-inputnumber) { background: var(--auth-input-bg, var(--surface-overlay)); }
+
+/* Divider refinement (mirror login) */
+.auth-divider { margin-top:1rem; }
+.divider-label { background:transparent; padding:0 .5rem; font-size:.75rem; font-weight:500; color:var(--text-color-secondary); }
+:deep(.auth-divider .p-divider-content){ background:transparent!important; padding:0 .25rem; }
+:deep(.auth-divider.p-divider-horizontal:before),
+:deep(.auth-divider.p-divider-horizontal:after){ border-top:1px solid var(--surface-border); }
+
+@media (prefers-color-scheme: dark){
+  :root { --auth-input-bg:#262e38; }
+}
+@media (prefers-color-scheme: light){
+  :root { --auth-input-bg:#f3f5f7; }
+}
 
 @media screen and (max-width: 576px) {
   .signup-container {

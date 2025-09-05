@@ -45,19 +45,21 @@
               <small v-if="submitted && !formData.password" class="p-error">Password is required</small>
             </div>
 
-            <Button 
-              type="submit" 
-              :label="loading ? 'Signing in...' : 'Sign in'" 
-              :icon="loading ? 'pi pi-spinner pi-spin' : 'pi pi-sign-in'"
-              :loading="loading" 
-              severity="primary"
-              class="mb-4 p-3"
-              :disabled="loading"
-            />
+            <div class="signin-btn-row">
+              <Button 
+                type="submit" 
+                :label="loading ? 'Signing in...' : 'Sign in'" 
+                :icon="loading ? 'pi pi-spinner pi-spin' : 'pi pi-sign-in'"
+                :loading="loading" 
+                severity="primary"
+                class="p-3 w-11rem"
+                :disabled="loading"
+              />
+            </div>
 
             <div class="text-center">
-              <Divider align="center">
-                <span class="text-600 font-medium">New here?</span>
+              <Divider align="center" class="auth-divider">
+                <span class="divider-label">New here?</span>
               </Divider>
               <router-link to="/signup" class="no-underline">
                 <Button 
@@ -145,6 +147,35 @@ const handleLogin = async () => {
 <style scoped>
 .login-container { width:100%; max-width:450px; }
 
+.signin-btn-row { display:flex; justify-content:center; margin-bottom:1.75rem; }
+
+.auth-divider { margin-top:.5rem; }
+/* Remove box look & use subtle inline label */
+.divider-label { background: transparent; padding:0 .5rem; font-size:.75rem; letter-spacing:0; text-transform:none; font-weight:500; color: var(--text-color-secondary); }
+:deep(.auth-divider .p-divider-content) { background: transparent!important; padding:0 .25rem; }
+:deep(.auth-divider.p-divider-horizontal) { margin:1.25rem 0 1rem; }
+/* Adjust pseudo line color */
+:deep(.auth-divider.p-divider-horizontal:before),
+:deep(.auth-divider.p-divider-horizontal:after) { border-top:1px solid var(--surface-border); }
+
+/* Adaptive system theme (light/dark) using prefers-color-scheme to set base tokens if not already set globally */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --auth-surface-bg: #121416;
+    --auth-input-bg: #262e38;
+  }
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --auth-surface-bg: #ffffff;
+    --auth-input-bg: #f3f5f7;
+  }
+}
+
+/* Apply token fallbacks */
+:deep(.p-card) { background: var(--surface-card, var(--auth-surface-bg)); }
+.login-container .surface-overlay { background: var(--auth-input-bg); }
+
 :deep(.p-password),
 :deep(.p-password-input),
 :deep(.p-inputtext) {
@@ -167,5 +198,6 @@ const handleLogin = async () => {
 </style>
 
 <style>
-/* Auth layout relies on body background tokens; no custom bg needed */
+/* Ensure divider label blends in dark mode where underlying card differs */
+body.dark .divider-label { color: var(--text-color-secondary); }
 </style>
