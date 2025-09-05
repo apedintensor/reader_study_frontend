@@ -1,5 +1,5 @@
 <template>
-  <div class="flex align-items-center justify-content-center min-h-screen bg-surface-50 px-4 py-8">
+  <div class="flex align-items-center justify-content-center min-h-screen px-4 py-8">
     <div class="signup-container">
       <Toast />
       <Card class="surface-card shadow-2 border-round p-4">
@@ -116,6 +116,10 @@
     </div>
   </div>
 </template>
+
+<style>
+/* Auth layout relies on body background tokens; no custom bg needed */
+</style>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'; // Import onMounted

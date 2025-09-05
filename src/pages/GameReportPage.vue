@@ -1,11 +1,11 @@
 <template>
-  <div class="report-container p-4">
+  <div class="u-page u-page-standard report-container u-surface-card border-round">
     <Toast />
     <Card v-if="loading" class="mb-4"><template #title>Loading Report...</template><template #content><ProgressBar mode="indeterminate" style="height:.5rem" /></template></Card>
     <Card v-else-if="!canView">
       <template #title>Report Not Ready</template>
       <template #content>
-        <p class="text-600">This block report is not yet available. It may still be finalizing. Try again shortly.</p>
+  <p class="text-600">This game report is not yet available. It may still be finalizing. Try again shortly.</p>
         <Button label="Retry" icon="pi pi-refresh" class="mr-2" :loading="checking" @click="checkAvailability" />
         <Button label="Back" icon="pi pi-arrow-left" severity="secondary" @click="goBack" />
       </template>
@@ -13,10 +13,20 @@
     <Card v-else class="mb-4">
       <template #title>
         <div class="flex align-items-center gap-2">
-          <i class="pi pi-chart-line" /> Block #{{ blockIndex + 1 }} Performance
+          <i class="pi pi-chart-line" /> Game #{{ blockIndex + 1 }} Performance
         </div>
       </template>
       <template #content>
+        <div class="congrats-banner u-surface-overlay border-round p-3 mb-4 flex align-items-center gap-3">
+          <span class="emoji" aria-hidden="true">🎉</span>
+          <div class="flex flex-column">
+            <span class="font-medium">{{ congratsTitle }}</span>
+            <span class="u-text-muted text-sm">{{ improvementMessage }}</span>
+          </div>
+          <div class="ml-auto flex gap-2">
+            <Button label="Start Next Game" icon="pi pi-play" size="small" @click="startNext" />
+          </div>
+        </div>
         <div class="grid">
           <div class="col-12 md:col-6">
             <h3 class="mt-0 mb-2">Accuracy (Pre vs Post)</h3>
@@ -26,7 +36,7 @@
             </ul>
           </div>
           <div class="col-12 md:col-6">
-            <h3 class="mt-0 mb-2">Peer Percentiles</h3>
+              <h3 class="mt-0 mb-2">Peer Accuracy</h3>
             <ul class="list-none m-0 p-0 flex flex-column gap-2 text-sm">
               <li class="flex justify-content-between"><span>Top-1 Post</span><span>{{ pct(report.top1_accuracy_post) }} ({{ percentile(report.peer_percentile_top1) }})</span></li>
               <li class="flex justify-content-between"><span>Top-3 Post</span><span>{{ pct(report.top3_accuracy_post) }} ({{ percentile(report.peer_percentile_top3) }})</span></li>
@@ -35,7 +45,6 @@
           <div class="col-12">
             <Divider />
             <div class="flex gap-2 flex-wrap">
-              <Button label="Start Next Block" icon="pi pi-play" @click="startNext" />
               <Button label="Dashboard" icon="pi pi-home" severity="secondary" @click="goDashboard" />
             </div>
           </div>
@@ -72,6 +81,22 @@ const checking = ref(false);
 const canView = ref(false);
 const polling = ref(false);
 const report: any = ref({});
+
+const congratsTitle = computed(() => 'Game Complete!');
+const improvementMessage = computed(() => {
+  const r: any = report.value || {};
+  const parts: string[] = [];
+  if (typeof r.delta_top1 === 'number') {
+    const pts = Math.round(r.delta_top1 * 100);
+    if (pts > 0) parts.push(`Top-1 +${pts} pts`); else if (pts === 0) parts.push('Top-1 unchanged');
+  }
+  if (typeof r.delta_top3 === 'number') {
+    const pts = Math.round(r.delta_top3 * 100);
+    if (pts > 0) parts.push(`Top-3 +${pts} pts`); else if (pts === 0) parts.push('Top-3 unchanged');
+  }
+  if (!parts.length) return 'Great effort completing this game. Keep the momentum going!';
+  return `Great job – ${parts.join(' · ')}. Ready for the next challenge?`;
+});
 
 function pct(v?: number){ return v==null ? '—' : Math.round(v*100)+'%'; }
 function deltaDisplay(v?: number){ if(v==null) return '—'; const pts=Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
@@ -137,5 +162,8 @@ onMounted(async () => { await checkAvailability(); if(!canView.value) startPolli
 </script>
 
 <style scoped>
-.report-container { max-width: 1000px; margin: 0 auto; }
+/* Max width handled by .u-page-standard; .report-container retained as a hook */
+.congrats-banner { position:relative; overflow:hidden; }
+.congrats-banner .emoji { font-size:1.75rem; line-height:1; }
+.congrats-banner::after { content:''; position:absolute; inset:0; pointer-events:none; border:1px solid var(--border-color); border-radius:inherit; }
 </style>

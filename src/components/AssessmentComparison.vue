@@ -276,19 +276,11 @@ const certaintyChange = computed(() => {
 /* New aligned grid for diagnoses */
 .diagnosis-comparison-grid { display:grid; grid-template-columns:1fr 1fr; column-gap:2rem; row-gap:.75rem; }
 .diagnosis-comparison-grid .dc-header { font-weight:600; padding:.25rem 0 .5rem; }
-.diagnosis-comparison-grid .diag-cell { display:flex; align-items:center; padding:.6rem .75rem; background:var(--surface-ground); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
+.diagnosis-comparison-grid .diag-cell { display:flex; align-items:center; padding:.6rem .75rem; background:var(--bg-surface-ground); border:1px solid var(--border-color); border-radius:var(--border-radius); }
 .diagnosis-comparison-grid .diag-cell.changed { background: var(--orange-50); border-color: var(--orange-200); }
 .diagnosis-comparison-grid .rank { font-weight:600; width:1.25rem; margin-right:.5rem; }
 
-.diagnosis-item {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--surface-border);
-  transition: all 0.3s ease;
-}
+.diagnosis-item { display:flex; align-items:center; padding:0.75rem; background:var(--bg-surface-ground); border-radius:var(--border-radius); border:1px solid var(--border-color); transition:all .3s ease; }
 
 .diagnosis-item.changed {
   background: var(--orange-50);
@@ -345,13 +337,7 @@ const certaintyChange = computed(() => {
 }
 
 .strategy-item,
-.notes-item {
-  padding: 0.75rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--surface-border);
-  transition: all 0.3s ease;
-}
+.notes-item { padding:0.75rem; background:var(--bg-surface-ground); border-radius:var(--border-radius); border:1px solid var(--border-color); transition:all .3s ease; }
 
 .strategy-item.changed,
 .notes-item.changed {

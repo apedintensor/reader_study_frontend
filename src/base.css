@@ -1,0 +1,69 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Explicit light theme surfaces (when not dark) */
+/* Light theme variables come from tokens.css (body:not(.dark-theme) uses :root values) */
+
+html, body {
+  color: var(--text-color);
+  background: var(--bg-body);
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  display: block;
+}
+
+/* Dark theme variables are provided by tokens.css via body.dark-theme */
+
+ a { font-weight:500; color: var(--link-color); text-decoration:none; }
+ a:hover { color: var(--link-hover); }
+
+/* removed flex centering to allow layout components to control */
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button { font-family:inherit; font-size:1em; font-weight:500; cursor:pointer; }
+
+.card {
+  padding: 2em;
+}
+
+/* Let layout components define their own spacing; minimal root styling */
+#app { min-height:100vh; }
+
+/* Media query fallback if no manual toggle stored */
+@media (prefers-color-scheme: dark) {
+  body:not(.dark-theme):not(.light-forced) {
+    /* If user hasn't explicitly chosen light, mirror system dark */
+    --bg-color:#121212;
+    --text-color-base:#ececec;
+    --link-color:#8b93ff;
+    --link-hover:#b4baff;
+    --button-bg:#1f1f1f;
+    --button-text:#ececec;
+    --surface-ground:#101112;
+    --surface-section:#141517;
+    --surface-card:#18191b;
+    --surface-overlay:#1e1f21;
+    --surface-border:#27292c;
+  --text-color:#e3e6e8;
+  --text-color-secondary:#b9c1c9;
+  --text-color-muted:#9fa7b0;
+  }
+}
+
+/* --------------------------------------- */
+/* Dark mode readability overrides         */
+/* --------------------------------------- */
+/* Dark specific overrides trimmed; tokens + utilities provide core theming */
+

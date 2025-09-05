@@ -1,0 +1,119 @@
+/* Design Tokens (Single Source) */
+:root {
+  /* Color primitives */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
+
+  /* Semantic (light) */
+  --bg-body: var(--color-white);
+  --bg-surface-ground: #f3f4f6;
+  --bg-surface-card: var(--color-white);
+  /* Overlay gets a subtle tint to differentiate nested surfaces */
+  --bg-surface-overlay: var(--color-gray-50);
+  --border-color: var(--color-gray-200);
+  --text-color: #213547;
+  --text-color-secondary: #5d6470;
+  --text-color-muted: #6b7280;
+  --link-color: #646cff;
+  --link-hover: #747bff;
+  --accent-primary: #6366f1;
+  --accent-primary-alt: #8b5cf6;
+  --accent-cta-start: #6366f1;
+  --accent-cta-end: #8b5cf6;
+  --highlight-bg: rgba(99,102,241,0.14);
+  --highlight-accent: #ffe89c;
+  --highlight-success-bg: rgba(34,197,94,0.12);
+  --focus-ring: var(--accent-primary);
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  /* Bridge legacy background var */
+  --bg-color: var(--bg-body);
+  /* Bridge legacy names */
+  --surface-ground: var(--bg-surface-ground);
+  --surface-card: var(--bg-surface-card);
+  --surface-overlay: var(--bg-surface-overlay);
+  --surface-border: var(--border-color);
+  /* Spacing Scale */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  /* Radius Scale */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+  /* Typography Scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.65;
+  /* Elevation (Light) */
+  --elev-1: 0 1px 2px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+  --elev-2: 0 2px 4px rgba(0,0,0,.1), 0 2px 6px -2px rgba(0,0,0,.05);
+  --elev-3: 0 4px 8px -2px rgba(0,0,0,.12), 0 2px 4px -1px rgba(0,0,0,.06);
+  --elev-4: 0 8px 16px -4px rgba(0,0,0,.18), 0 4px 6px -2px rgba(0,0,0,.08);
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --easing-standard: cubic-bezier(.4,0,.2,1);
+  --easing-emphasized: cubic-bezier(.2,0,0,.9);
+
+  /* Page Layout (centralized) */
+  --page-max-width: 1200px;
+  --page-max-width-wide: 1600px;
+  --page-max-width-narrow: 800px;
+  --page-padding-y: var(--space-6);
+  --page-padding-x: var(--space-6);
+  --page-padding-x-mobile: var(--space-4);
+}
+
+body.dark-theme {
+  /* Semantic (dark) */
+  /* Lighter outermost, darker inward hierarchy */
+  --bg-body: #1f2124;           /* lightest page backdrop */
+  --bg-surface-ground: #1b1d20; /* section / page ground */
+  --bg-surface-card: #16181b;   /* standard card */
+  --bg-surface-overlay: #121315;/* nested / elevated overlay (darkest) */
+  --border-color: #2b2e33;
+  --text-color: #e6e9ec;
+  --text-color-secondary: #c3cbd3;
+  --text-color-muted: #a2abb4;
+  --link-color: #8b93ff;
+  --link-hover: #b4baff;
+  --success-color: #34d399;
+  --danger-color: #f87171;
+  --highlight-bg: rgba(99,102,241,0.22);
+  --highlight-accent: #c0911a;
+  --highlight-success-bg: rgba(34,197,94,0.2);
+  --bg-color: var(--bg-body);
+  --surface-ground: var(--bg-surface-ground);
+  --surface-card: var(--bg-surface-card);
+  --surface-overlay: var(--bg-surface-overlay);
+  --surface-border: var(--border-color);
+  /* Elevation (Dark) */
+  --elev-1: 0 1px 2px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.38);
+  --elev-2: 0 2px 4px rgba(0,0,0,.6), 0 2px 6px -2px rgba(0,0,0,.48);
+  --elev-3: 0 4px 8px -2px rgba(0,0,0,.62), 0 2px 4px -1px rgba(0,0,0,.5);
+  --elev-4: 0 8px 16px -4px rgba(0,0,0,.7), 0 4px 6px -2px rgba(0,0,0,.58);
+}

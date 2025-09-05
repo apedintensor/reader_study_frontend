@@ -1,15 +1,11 @@
 <template>
-  <div class="dashboard-container">
+  <div class="u-page u-page-standard">
     <Toast />
     
     <!-- Progress Overview -->
     <div class="grid">
-      <!-- Game Blocks (Server Managed) -->
-      <div class="col-12">
-        <DashboardGamesList />
-      </div>
-      <!-- Stats Summary -->
-      <div class="col-12">
+      <!-- Stats Summary (moved to top) -->
+      <div class="col-12 order-0">
         <Card class="mb-4">
           <template #title>
             <div class="flex align-items-center">
@@ -18,37 +14,46 @@
             </div>
           </template>
           <template #content>
-            <div class="grid">
+            <div class="grid game-progress-grid">
               <div class="col-12 md:col-4">
-                <div class="surface-card shadow-1 border-round p-4 h-full">
-                  <i class="pi pi-list text-xl text-primary mb-3"></i>
-                  <div class="text-500 font-medium">Total Cases</div>
-                  <div class="text-900 text-4xl font-bold mt-2">{{ loading ? '—' : totalCases }}</div>
-                  <div class="text-600 mt-2">All available cases</div>
+                <div class="u-surface-card shadow-1 border-round p-4 h-full metric-tile compact">
+                  <div class="metric-row">
+                    <div class="metric-head">
+                      <i class="pi pi-list"></i>
+                      <span class="label">Total Cases</span>
+                    </div>
+                    <span class="value">{{ loading ? '—' : totalCases }}</span>
+                  </div>
                 </div>
               </div>
               
               <div class="col-12 md:col-4">
-                <div class="surface-card shadow-1 border-round p-4 h-full">
-                  <i class="pi pi-check-circle text-xl text-green-500 mb-3"></i>
-                  <div class="text-500 font-medium">Completed</div>
-                  <div class="text-900 text-4xl font-bold mt-2">{{ loading ? '—' : completedCount }}</div>
-                  <div class="text-600 mt-2">Successfully assessed cases</div>
+                <div class="u-surface-card shadow-1 border-round p-4 h-full metric-tile compact">
+                  <div class="metric-row">
+                    <div class="metric-head">
+                      <i class="pi pi-check-circle text-green-500"></i>
+                      <span class="label">Completed</span>
+                    </div>
+                    <span class="value">{{ loading ? '—' : completedCount }}</span>
+                  </div>
                 </div>
               </div>
               
               <div class="col-12 md:col-4">
-                <div class="surface-card shadow-1 border-round p-4 h-full">
-                  <i class="pi pi-clock text-xl text-orange-500 mb-3"></i>
-                  <div class="text-500 font-medium">Remaining</div>
-                  <div class="text-900 text-4xl font-bold mt-2">{{ loading ? '—' : remainingCount }}</div>
-                  <div class="text-600 mt-2">Cases pending assessment</div>
+                <div class="u-surface-card shadow-1 border-round p-4 h-full metric-tile compact">
+                  <div class="metric-row">
+                    <div class="metric-head">
+                      <i class="pi pi-clock text-orange-500"></i>
+                      <span class="label">Remaining</span>
+                    </div>
+                    <span class="value">{{ loading ? '—' : remainingCount }}</span>
+                  </div>
                 </div>
               </div>
 
               <!-- Progress Bar -->
               <div class="col-12 mt-4">
-                <div class="surface-card shadow-1 border-round p-4">
+                <div class="u-surface-card shadow-1 border-round p-4 progress-green-block">
                   <div class="flex justify-content-between align-items-center mb-3">
                     <div class="flex align-items-center">
                       <i class="pi pi-chart-line text-primary mr-2"></i>
@@ -64,6 +69,10 @@
             </div>
           </template>
         </Card>
+      </div>
+      <!-- Game Blocks (Server Managed) -->
+      <div class="col-12 order-1">
+        <DashboardGamesList />
       </div>
 
   <!-- Available Cases list hidden per request -->
@@ -211,9 +220,24 @@ onMounted(async () => {
     return;
   }
   loading.value = true;
-  // Load server-managed game summaries in parallel (non-blocking for case progress)
-  gamesStore.loadAllGames().catch(err => console.warn('Failed to load game summaries', err));
+  // Force refresh game summaries every time dashboard mounts so newly finished/created games appear without manual reload.
+  gamesStore.loadAllGames(true).catch(err => console.warn('Failed to load game summaries', err));
   await loadAndDisplayProgress();
+});
+
+// If user navigates away and back (e.g., via header click) reuse component instance? In some layouts keep-alive may cache.
+// Provide a lightweight interval revalidation while dashboard is active to ensure new summaries appear shortly after finishing a game.
+let revalHandle: any = null;
+onMounted(()=>{
+  if(revalHandle) clearInterval(revalHandle);
+  revalHandle = setInterval(()=>{
+    // Only poll while there are incomplete blocks that might finish and produce summaries
+    const hasIncomplete = Object.values(gamesStore.assignmentsByBlock).some(list => list.some(a=>!a.completed_post_at));
+    if(!hasIncomplete){
+      clearInterval(revalHandle); revalHandle=null; return;
+    }
+    gamesStore.loadAllGames(true).catch(()=>{});
+  }, 8000); // every 8s until all blocks complete
 });
 
 // Add watch for assessment updates
@@ -237,11 +261,6 @@ watch(() => caseStore.caseProgress, () => {
 </script>
 
 <style scoped>
-.dashboard-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
 
 :deep(.cursor-pointer) {
   cursor: pointer;
@@ -252,17 +271,78 @@ watch(() => caseStore.caseProgress, () => {
   border-radius: var(--border-radius);
 }
 
-:deep(.p-progressbar) {
-  background: var(--surface-ground);
-}
+:deep(.p-progressbar) { background: var(--bg-surface-ground); }
 
 :deep(.shadow-1) {
   box-shadow: 0 2px 1px -1px rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 1px 3px 0 rgba(0,0,0,.12);
 }
 
-@media screen and (max-width: 768px) {
-  .dashboard-container {
-    padding: 1rem;
-  }
+/* Responsive container spacing handled by .u-page media query */
+</style>
+<style scoped>
+/* Green theming for dashboard overall progress bar (remove purple) */
+.progress-green-block {
+  --accent-primary: var(--success-color);
+  --accent-primary-alt: var(--success-color);
+  --focus-ring: var(--success-color);
+}
+/* Force progress bar fill */
+:deep(.progress-green-block .p-progressbar .p-progressbar-value) { background: var(--success-color)!important; }
+/* Make info tag green */
+:deep(.progress-green-block .p-tag.p-tag-info) { background: var(--highlight-success-bg)!important; color: var(--success-color)!important; border:1px solid var(--success-color)!important; }
+
+/* Metric tiles responsive compact mode */
+.metric-tile { transition: padding .18s ease, background .18s ease; }
+
+@media (max-width: 1350px) {
+  .game-progress-grid .metric-tile { padding: 1.5rem 1.25rem !important; }
+  .game-progress-grid .metric-tile .text-4xl { font-size: 2rem; }
+}
+
+@media (max-width: 1100px) {
+  .game-progress-grid { gap: .5rem !important; }
+  .game-progress-grid .metric-tile { padding: 1.1rem .95rem !important; }
+  .game-progress-grid .metric-tile .text-4xl { font-size: 1.75rem; }
+  .game-progress-grid .metric-tile i { margin-bottom: .35rem !important; font-size:1.15rem !important; }
+  .game-progress-grid .metric-tile .u-text-secondary { font-size:.75rem; }
+  .game-progress-grid .metric-tile .u-text-muted { font-size:.65rem; margin-top:.35rem; }
+  .progress-green-block { padding: .85rem 1rem !important; }
+  :deep(.progress-green-block .p-progressbar) { height: .6rem !important; }
+  :deep(.progress-green-block .p-tag) { transform: scale(.85); transform-origin: right center; }
+}
+
+@media (max-width: 780px) {
+  .game-progress-grid .metric-tile { display:flex; align-items:center; gap:.75rem; padding:.85rem .85rem !important; }
+  .game-progress-grid .metric-tile i { margin:0 !important; }
+  .game-progress-grid .metric-tile .text-4xl { font-size:1.5rem; margin-top:0; }
+  .game-progress-grid .metric-tile .u-text-secondary { margin-top:0; }
+  .game-progress-grid .metric-tile .u-text-muted { display:none; }
+  .progress-green-block .flex.justify-content-between { flex-wrap:wrap; gap:.5rem; }
+}
+
+@media (max-width: 520px) {
+  .game-progress-grid .metric-tile { padding:.65rem .65rem !important; }
+  .game-progress-grid .metric-tile .text-4xl { font-size:1.35rem; }
+  :deep(.progress-green-block .p-progressbar) { height:.5rem !important; }
+}
+
+/* Compact metric layout */
+.metric-tile.compact { padding:1.1rem 1.25rem !important; }
+.metric-tile.compact .metric-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.metric-tile.compact .metric-head { display:flex; align-items:center; gap:.5rem; font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-color-secondary); }
+.metric-tile.compact i { font-size:1rem; margin:0!important; }
+.metric-tile.compact .value { font-size:1.9rem; font-weight:700; font-variant-numeric: tabular-nums; color:var(--text-color); }
+
+@media (max-width:1100px){
+  .metric-tile.compact .value { font-size:1.6rem; }
+}
+@media (max-width:780px){
+  .metric-tile.compact { padding:.85rem .9rem !important; }
+  .metric-tile.compact .value { font-size:1.45rem; }
+  .metric-tile.compact .metric-head { font-size:.7rem; }
+}
+@media (max-width:520px){
+  .metric-tile.compact { padding:.65rem .65rem !important; }
+  .metric-tile.compact .value { font-size:1.3rem; }
 }
 </style>

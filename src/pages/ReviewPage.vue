@@ -1,5 +1,5 @@
 <template>
-  <div class="review-container p-4">
+  <div class="u-page u-page-wide review-container">
     <Toast />
     
     <!-- Header -->
@@ -343,10 +343,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.review-container {
-  max-width: 1600px;
-  margin: 0 auto;
-}
+/* Container sizing now via .u-page-wide */
 
 .metadata-grid {
   display: grid;

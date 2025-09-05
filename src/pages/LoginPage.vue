@@ -1,5 +1,5 @@
 <template>
-  <div class="flex align-items-center justify-content-center min-h-screen bg-surface-50 px-4 py-8">
+  <div class="flex align-items-center justify-content-center min-h-screen u-page u-page-narrow">
     <div class="login-container">
       <Toast />
       <Card class="shadow-2">
@@ -143,10 +143,7 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container {
-  width: 100%;
-  max-width: 450px;
-}
+.login-container { width:100%; max-width:450px; }
 
 :deep(.p-password),
 :deep(.p-password-input),
@@ -167,4 +164,8 @@ const handleLogin = async () => {
     max-width: 100%;
   }
 }
+</style>
+
+<style>
+/* Auth layout relies on body background tokens; no custom bg needed */
 </style>

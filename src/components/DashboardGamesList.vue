@@ -15,7 +15,7 @@
     <template #content>
   <div v-if="!games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">No games yet. Start your first game.</div>
       <div class="blocks-list flex flex-column gap-3">
-        <div v-for="g in gamesSorted" :key="g.block_index" class="block-row surface-card p-3 border-round shadow-1">
+  <div v-for="g in gamesSorted" :key="g.block_index" class="block-row u-surface-overlay u-card-pad border-round u-elev-1">
           <div class="row-head flex justify-content-between align-items-center">
             <div class="flex align-items-center gap-2">
               <span class="font-medium">Game #{{ g.block_index + 1 }}</span>
@@ -28,18 +28,18 @@
           <div class="summary mt-2">
             <div v-if="g.top1_accuracy_pre == null && g.top1_accuracy_post == null" class="text-xs text-500">Summary pending...</div>
             <div v-else class="metrics flex flex-wrap gap-4 text-sm">
-              <div class="acc-group">
-                <div class="group-title">Your Accuracy</div>
+              <div class="acc-group u-surface-overlay">
+                <div class="group-title u-heading-sub">Your Accuracy</div>
                 <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.top1_accuracy_pre) }} → {{ pct(g.top1_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top1)]">({{ deltaDisplay(g.delta_top1) }})</span></span></div>
                 <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.top3_accuracy_pre) }} → {{ pct(g.top3_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top3)]">({{ deltaDisplay(g.delta_top3) }})</span></span></div>
               </div>
-              <div class="acc-group">
-                <div class="group-title">Peer Accuracy</div>
+              <div class="acc-group u-surface-overlay">
+                <div class="group-title u-heading-sub">Peer Accuracy</div>
                 <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.peer_percentile_top1) }}</span></div>
                 <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.peer_percentile_top3) }}</span></div>
               </div>
             </div>
-            <ProgressBar :value="blockProgress(g.block_index).pct" class="h-half mt-2" />
+            <!-- Removed per-game progress bar for a cleaner, more compact card -->
           </div>
           <transition name="fade">
             <div v-if="expandedBlock === g.block_index" class="details mt-3 border-top-1 surface-border pt-2">
@@ -127,7 +127,6 @@ import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
-import ProgressBar from 'primevue/progressbar';
 import { useGamesStore } from '../stores/gamesStore';
 import { useToast } from 'primevue/usetoast';
 import { getGame } from '../api/games';
@@ -151,7 +150,8 @@ async function ensureTerms(){
   } catch(e){ /* silent fail; ids will show */ }
 }
 onMounted(()=>{ ensureTerms(); });
-const gamesSorted = computed(()=>[...games.value].sort((a,b)=>a.block_index - b.block_index));
+// Display newest / largest block first (descending order)
+const gamesSorted = computed(()=>[...games.value].sort((a,b)=> (b.block_index ?? 0) - (a.block_index ?? 0)));
 const advancing = ref(false);
 // Identify an in-progress (incomplete) block (has assignments & some not finished)
 const incompleteBlockIndex = computed(()=>{
@@ -177,7 +177,6 @@ function pct(v?: number) { return v == null ? '—' : Math.round(v*100)+'%'; }
 function deltaDisplay(v?: number){ if(v==null) return '—'; const pts = Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
 function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return 'text-green-500'; if(v<0) return 'text-red-500'; return 'text-500'; }
 // Removed per-game progress Tag display helpers
-function blockProgress(block:number){ return gamesStore.blockProgress(block); }
 
 async function onAdvance(){
   if(advancing.value) return; advancing.value = true;
@@ -241,12 +240,12 @@ function idLabel(id?:number|null){
   return termMap.value[id] || `#${id}`;
 }
 function match(a?:number|null, b?:number|null){ return a!=null && b!=null && a===b; }
-function cellClass(a?:number|null, gt?:number|null){ return match(a,gt) ? 'bg-green-50 text-green-700 font-medium' : 'text-500'; }
+function cellClass(a?:number|null, gt?:number|null){ return match(a,gt) ? 'u-bg-success-soft font-medium' : 'text-500'; }
 function anyMatch(arr?: (number|null)[] | null, gt?: number|null){
   if(!arr || gt==null) return false; return arr.some(id=>id===gt);
 }
 function top3CellClass(arr?: (number|null)[] | null, gt?: number|null){
-  return anyMatch(arr, gt) ? 'bg-green-50 text-green-700 font-medium' : 'text-500';
+  return anyMatch(arr, gt) ? 'u-bg-success-soft font-medium' : 'text-500';
 }
 function top3Ids(c:any, phase:'pre'|'post') : (number|null)[] | null {
   // Accept both *_top3_diagnosis_term_ids and *_top_diagnosis_term_ids from backend variants
@@ -267,25 +266,28 @@ function viewReport(block:number){ router.push(`/game/report/${block}`); }
 .start-btn-container { display:flex; justify-content:center; width:100%; }
 .big-start-btn { padding:1rem 2.75rem; font-size:1.15rem; font-weight:600; }
 .title-line { font-size:1.25rem; font-weight:600; }
-.games-intro { display:flex; flex-direction:column; gap:.35rem; max-width:860px; text-align:center; line-height:1.35; font-weight:500; font-size:1.05rem; color:var(--text-color, #eee); }
+.games-intro { display:flex; flex-direction:column; gap:.35rem; max-width:860px; text-align:center; line-height:1.35; font-weight:500; font-size:1.05rem; color:var(--text-color); }
 .games-intro .line { display:block; }
 .start-btn-container { margin-top:.75rem; margin-bottom:1.75rem; }
-.cta-start-btn { 
-  background: linear-gradient(90deg, var(--primary-color, #6366f1), #8b5cf6);
+.cta-start-btn {
+  background: linear-gradient(90deg, var(--accent-cta-start, var(--accent-primary)), var(--accent-cta-end, var(--accent-alt)));
   box-shadow: 0 4px 8px -2px rgba(0,0,0,.4), 0 2px 4px -1px rgba(0,0,0,.3);
-  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  transition: transform var(--motion-base, .18s) var(--easing-standard, ease), box-shadow var(--motion-base, .18s) var(--easing-standard, ease), filter var(--motion-base, .18s) var(--easing-standard, ease);
   letter-spacing:.5px;
+  color: var(--color-white, #fff);
 }
 .cta-start-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow:0 8px 18px -4px rgba(0,0,0,.55), 0 4px 8px -2px rgba(0,0,0,.4); filter:brightness(1.05); }
 .cta-start-btn:active:not(:disabled) { transform: translateY(0); box-shadow:0 4px 10px -2px rgba(0,0,0,.5); }
 .cta-start-btn.p-button:disabled { filter:grayscale(.4); opacity:.7; }
 .blocks-list .block-row { position:relative; }
 .metrics { width:100%; }
-.acc-group { min-width: 220px; background: var(--surface-overlay, #111); padding:.5rem .75rem; border:1px solid var(--surface-border,#333); border-radius:4px; }
-.group-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color: var(--text-color-secondary,#888); margin-bottom:.25rem; font-weight:600; }
+.acc-group { min-width: 220px; background: var(--surface-overlay); padding:.5rem .75rem; border:1px solid var(--surface-border); border-radius:4px; }
+.group-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color: var(--text-color-secondary); margin-bottom:.25rem; font-weight:600; }
 .stat-row span:last-child { font-variant-numeric: tabular-nums; }
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity:0; }
 .report-cases { font-size:.75rem; }
 .report-cases li { line-height:1.2; }
+
+/* Dark overrides removed: token system supplies correct surfaces & text */
 </style>

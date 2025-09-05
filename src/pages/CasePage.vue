@@ -16,6 +16,7 @@ import CaseProgressSteps from '../components/CaseProgressSteps.vue';
 import CaseImageViewer from '../components/CaseImageViewer.vue';
 import AIPredictionsTable from '../components/AIPredictionsTable.vue';
 import AssessmentForm from '../components/AssessmentForm.vue';
+import ProgressBar from 'primevue/progressbar';
 
 import Toast from 'primevue/toast'; // Keep Toast here for page-level messages
 
@@ -162,6 +163,35 @@ const activeStep = computed(() => {
   if (progress?.postCompleted) return 2; // Complete
   if (progress?.preCompleted) return 1;  // Post-AI phase
   return 0;                               // Pre-AI
+});
+
+// --- Game (Block) Progress Bar ---
+// Determine current block index for this case by scanning assignments
+const currentBlockIndex = computed(() => {
+  for (const [blockStr, list] of Object.entries(gamesStore.assignmentsByBlock || {})) {
+    const block = Number(blockStr);
+    if (list.some(a => a.case_id === caseId.value)) return block;
+  }
+  return null;
+});
+
+const blockProgress = computed(() => {
+  if (currentBlockIndex.value == null) return null;
+  return gamesStore.blockProgress(currentBlockIndex.value);
+});
+
+// Percent of post (fully completed) assessments; fallback to pre if no posts yet
+const gameProgressPercent = computed(() => {
+  const prog = blockProgress.value; if (!prog) return 0;
+  if (prog.total === 0) return 0;
+  // Use post completion percent as main indicator
+  return Math.round((prog.post / prog.total) * 100);
+});
+
+// Label for inside bar (just counts, no percentage)
+const gameProgressBarLabel = computed(() => {
+  const prog = blockProgress.value; if(!prog || !prog.total) return '';
+  return `${prog.post}/${prog.total} cases completed`;
 });
 
 
@@ -436,6 +466,7 @@ const handleSubmit = async () => {
 };
 
 const handlePreAiSubmit = async () => {
+  if (submitting.value) return; // prevent double submit
   submitted.value = true;
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
@@ -494,6 +525,8 @@ const handlePreAiSubmit = async () => {
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting PRE assessment payload', assessmentPayload);
+  // Explicit JSON log for inspection
+  try { console.log('[ASSESSMENT_SUBMIT_PRE] /api/assessment/ body=' + JSON.stringify(assessmentPayload, null, 2)); } catch(_) {}
     const { data } = await apiClient.post<AssessmentSubmitResponse>('/api/assessment/', assessmentPayload);
     console.debug('PRE submit response meta', {
       block_index: data?.block_index,
@@ -521,6 +554,7 @@ const handlePreAiSubmit = async () => {
 };
 
 const handlePostAiSubmit = async () => {
+  if (submitting.value) return; // prevent double submit
   submitted.value = true;
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
@@ -582,6 +616,7 @@ const handlePostAiSubmit = async () => {
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting POST assessment payload', assessmentPayload);
+  try { console.log('[ASSESSMENT_SUBMIT_POST] /api/assessment/ body=' + JSON.stringify(assessmentPayload, null, 2)); } catch(_) {}
     const { data } = await apiClient.post<AssessmentSubmitResponse>('/api/assessment/', assessmentPayload);
     console.debug('POST submit response meta', {
       block_index: data?.block_index,
@@ -684,7 +719,7 @@ function handleBlockContinue() {
 </script>
 
 <template>
-  <div class="case-container p-4">
+  <div class="u-page u-page-wide case-container u-surface-ground border-round case-page-green">
     <Toast />
     <BlockFeedbackPanel
       v-if="enableBlockFeedback"
@@ -698,8 +733,14 @@ function handleBlockContinue() {
     <div class="grid">
       <!-- Left Column -->
       <div class="col-12 lg:col-5">
-  <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
+  <!-- Game Progress Bar (moved above image card) -->
+  <div v-if="blockProgress && blockProgress.total" class="mb-3">
+    <ProgressBar :value="gameProgressPercent" :showValue="false" class="game-progress-bar">
+      <span class="gp-label">{{ gameProgressBarLabel }}</span>
+    </ProgressBar>
+  </div>
   <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
+  <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
   <!-- Metadata display removed -->
       </div>
 
@@ -725,9 +766,31 @@ function handleBlockContinue() {
 </template>
 
 <style scoped>
-.case-container {
-  max-width: 1600px;
-  margin: 0 auto;
+/* Width now driven by .u-page-wide; keep hook class if future overrides needed */
+.case-page-green {
+  /* Override accent (purple) tokens with success green for this page only */
+  --accent-primary: var(--success-color);
+  --accent-primary-alt: var(--success-color);
+  --accent-cta-start: var(--success-color);
+  --accent-cta-end: var(--success-color);
+  --focus-ring: var(--success-color);
+  --highlight-bg: var(--highlight-success-bg);
 }
-/* Styles for child components are in their respective files or global */
+
+/* Force progress bar value to green inside this page (PrimeVue uses .p-progressbar-value) */
+.case-page-green :deep(.p-progressbar .p-progressbar-value) {
+  background: var(--success-color) !important;
+}
+
+/* Tag/info elements also inherit green if they relied on accent */
+.case-page-green :deep(.p-tag) {
+  background: var(--highlight-success-bg) !important;
+  color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+}
+
+/* Inline game progress label */
+.game-progress-bar { position:relative; }
+.game-progress-bar .gp-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:600; letter-spacing:.5px; color:var(--color-white); mix-blend-mode:normal; }
+.dark .game-progress-bar .gp-label { color:#fff; }
 </style>

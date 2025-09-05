@@ -52,7 +52,7 @@ The project follows a standard Vue 3 + Vite structure:
 │   ├── stores/           # Pinia state management stores
 │   ├── App.vue           # Root Vue component
 │   ├── main.ts           # Application entry point
-│   └── style.css         # Global styles
+│   └── base.css          # Global base (structure/reset only)
 ├── .gitignore
 ├── cypress.config.ts     # Cypress configuration
 ├── index.html            # Main HTML file

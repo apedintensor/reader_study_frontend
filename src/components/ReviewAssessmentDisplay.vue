@@ -192,7 +192,7 @@ const getAiUsefulnessSeverity = (usefulness: string | null | undefined): string 
   color: var(--text-color);
 }
 
-.field-display .value { padding:0.5rem 0.75rem; background:var(--surface-ground); border:1px solid var(--surface-border); border-radius:var(--border-radius); min-height:2.4rem; display:flex; align-items:center; justify-content:center; line-height:1.3; }
+.field-display .value { padding:0.5rem 0.75rem; background:var(--bg-surface-ground); border:1px solid var(--border-color); border-radius:var(--border-radius); min-height:2.4rem; display:flex; align-items:center; justify-content:center; line-height:1.3; }
 
 .field-display .value.notes {
   white-space: pre-wrap;
