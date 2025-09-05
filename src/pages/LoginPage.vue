@@ -13,7 +13,7 @@
           <form @submit.prevent="handleLogin" class="p-fluid">
             <!-- Email -->
             <div class="field mb-4">
-              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2 input-shell">
                 <i class="pi pi-envelope text-500" />
                 <InputText
                   v-model="formData.email"
@@ -29,7 +29,7 @@
 
             <!-- Password -->
             <div class="field mb-4">
-              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2">
+              <div class="flex align-items-center surface-overlay border-round px-3 py-2 gap-2 input-shell">
                 <i class="pi pi-lock text-500" />
                 <Password
                   v-model="formData.password"
@@ -151,8 +151,8 @@ const handleLogin = async () => {
 
 .auth-divider { margin-top:.5rem; }
 /* Remove box look & use subtle inline label */
-.divider-label { background: transparent; padding:0 .5rem; font-size:.75rem; letter-spacing:0; text-transform:none; font-weight:500; color: var(--text-color-secondary); }
-:deep(.auth-divider .p-divider-content) { background: transparent!important; padding:0 .25rem; }
+.divider-label { background: var(--surface-card, var(--auth-surface-bg)); padding:0 .6rem; font-size:.75rem; letter-spacing:0; text-transform:none; font-weight:500; color: var(--text-color-secondary); border-radius:2px; position:relative; z-index:1; }
+:deep(.auth-divider .p-divider-content) { background: var(--surface-card, var(--auth-surface-bg))!important; padding:0 .25rem; position:relative; z-index:1; }
 :deep(.auth-divider.p-divider-horizontal) { margin:1.25rem 0 1rem; }
 /* Adjust pseudo line color */
 :deep(.auth-divider.p-divider-horizontal:before),
@@ -175,6 +175,10 @@ const handleLogin = async () => {
 /* Apply token fallbacks */
 :deep(.p-card) { background: var(--surface-card, var(--auth-surface-bg)); }
 .login-container .surface-overlay { background: var(--auth-input-bg); }
+
+/* Bordered input shell for both email & password */
+.input-shell { border:1px solid var(--surface-border); transition:border-color .15s, box-shadow .15s; }
+.input-shell:focus-within { border-color: var(--primary-color); box-shadow:0 0 0 1px var(--primary-color); }
 
 :deep(.p-password),
 :deep(.p-password-input),

@@ -244,9 +244,10 @@ const handleSignup = async () => {
 .field-label { display:block; font-weight:600; margin-bottom:.4rem; font-size:.85rem; letter-spacing:.3px; }
 .field-label.with-icon i { margin-right:.4rem; font-size:.85rem; opacity:.8; }
 
-.input-wrapper { display:flex; align-items:center; gap:.65rem; padding:.75rem .9rem; background:var(--auth-input-bg, var(--surface-overlay)); border:1px solid var(--surface-border); border-radius:var(--border-radius); }
+.input-wrapper { display:flex; align-items:center; gap:.65rem; padding:.75rem .9rem; background:var(--auth-input-bg, var(--surface-overlay)); border:1px solid var(--auth-input-border, var(--surface-border)); border-radius:var(--border-radius); transition:border-color .15s, box-shadow .15s, background-color .3s; }
 .input-wrapper i { color:var(--text-color-secondary); font-size:1rem; }
-.input-wrapper:focus-within { outline:2px solid var(--primary-color); outline-offset:2px; }
+/* Enhanced focus style: clearer border instead of external outline */
+.input-wrapper:focus-within { border-color: var(--primary-color); box-shadow:0 0 0 1px var(--primary-color/30); }
 
 :deep(.p-card) {
   background: var(--surface-card);
@@ -271,16 +272,16 @@ const handleSignup = async () => {
 
 /* Divider refinement (mirror login) */
 .auth-divider { margin-top:1rem; }
-.divider-label { background:transparent; padding:0 .5rem; font-size:.75rem; font-weight:500; color:var(--text-color-secondary); }
-:deep(.auth-divider .p-divider-content){ background:transparent!important; padding:0 .25rem; }
+.divider-label { background: var(--surface-card, var(--auth-surface-bg)); padding:0 .6rem; font-size:.75rem; font-weight:500; color:var(--text-color-secondary); border-radius:2px; position:relative; z-index:1; }
+:deep(.auth-divider .p-divider-content){ background: var(--surface-card, var(--auth-surface-bg))!important; padding:0 .25rem; position:relative; z-index:1; }
 :deep(.auth-divider.p-divider-horizontal:before),
 :deep(.auth-divider.p-divider-horizontal:after){ border-top:1px solid var(--surface-border); }
 
 @media (prefers-color-scheme: dark){
-  :root { --auth-input-bg:#262e38; }
+  :root { --auth-input-bg:#262e38; --auth-input-border:#3b4754; }
 }
 @media (prefers-color-scheme: light){
-  :root { --auth-input-bg:#f3f5f7; }
+  :root { --auth-input-bg:#f3f5f7; --auth-input-border:#c3ccd5; }
 }
 
 @media screen and (max-width: 576px) {
