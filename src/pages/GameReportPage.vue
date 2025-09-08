@@ -42,6 +42,20 @@
               <li class="flex justify-content-between"><span>Top-3 Post</span><span>{{ pct(report.top3_accuracy_post) }} ({{ percentile(report.peer_percentile_top3) }})</span></li>
             </ul>
           </div>
+          <!-- Details table (same format as dashboard list) -->
+          <div class="col-12" v-if="report?.cases && report.cases.length">
+            <div class="font-medium mb-2 flex justify-content-between">
+              <span>Game Report</span>
+              <span class="text-xs text-500">{{ report.total_cases }} cases</span>
+            </div>
+            <div class="grid text-xs mb-2">
+              <div class="col-6 md:col-3"><strong>Top1</strong> {{ pct(report.top1_accuracy_pre) }} → {{ pct(report.top1_accuracy_post) }}</div>
+              <div class="col-6 md:col-3"><strong>Top3</strong> {{ pct(report.top3_accuracy_pre) }} → {{ pct(report.top3_accuracy_post) }}</div>
+              <div class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(report.delta_top1)">{{ deltaDisplay(report.delta_top1) }}</span></div>
+              <div class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(report.delta_top3)">{{ deltaDisplay(report.delta_top3) }}</span></div>
+            </div>
+            <GameReportCaseTable :cases="report.cases" :termMap="termMap" />
+          </div>
           <div class="col-12">
             <Divider />
             <div class="flex gap-2 flex-wrap">
@@ -65,6 +79,8 @@ import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import { useGamesStore } from '../stores/gamesStore';
 import { getGame, canViewReport } from '../api/games';
+import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
+import GameReportCaseTable from '../components/GameReportCaseTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -81,6 +97,18 @@ const checking = ref(false);
 const canView = ref(false);
 const polling = ref(false);
 const report: any = ref({});
+// Diagnosis term label cache
+const termMap = ref<Record<number,string>>({});
+const termsLoaded = ref(false);
+async function ensureTerms(){
+  if(termsLoaded.value) return;
+  try {
+    const list = await fetchDiagnosisTerms();
+    const map:Record<number,string> = {};
+    list.forEach((t:any)=>{ if(t && typeof t.id==='number') map[t.id]=t.name; });
+    termMap.value = map; termsLoaded.value = true;
+  } catch(e){ /* ignore */ }
+}
 
 const congratsTitle = computed(() => 'Game Complete!');
 const improvementMessage = computed(() => {
@@ -157,8 +185,9 @@ async function startNext(){
 }
 function goDashboard(){ router.push('/'); }
 function goBack(){ router.back(); }
+// helper functions now encapsulated in GameReportCaseTable
 
-onMounted(async () => { await checkAvailability(); if(!canView.value) startPolling(); });
+onMounted(async () => { await ensureTerms(); await checkAvailability(); if(!canView.value) startPolling(); });
 </script>
 
 <style scoped>
@@ -166,4 +195,6 @@ onMounted(async () => { await checkAvailability(); if(!canView.value) startPolli
 .congrats-banner { position:relative; overflow:hidden; }
 .congrats-banner .emoji { font-size:1.75rem; line-height:1; }
 .congrats-banner::after { content:''; position:absolute; inset:0; pointer-events:none; border:1px solid var(--border-color); border-radius:inherit; }
+
+/* table styles moved into GameReportCaseTable */
 </style>

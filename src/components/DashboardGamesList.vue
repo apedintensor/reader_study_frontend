@@ -56,60 +56,7 @@
                     <div class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top1)">{{ deltaDisplay(reportState[g.block_index].data.delta_top1) }}</span></div>
                     <div class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top3)">{{ deltaDisplay(reportState[g.block_index].data.delta_top3) }}</span></div>
                   </div>
-                  <div class="overflow-auto">
-                    <table class="case-table w-full">
-                      <thead>
-                        <tr>
-                          <th>Case</th>
-                          <th>GT</th>
-                          <th>Pre Top1</th>
-                          <th>Pre Top3</th>
-                          <th>Post Top1</th>
-                          <th>Post Top3</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="c in reportState[g.block_index].data.cases" :key="c.case_id">
-                          <td>#{{ c.case_id }}</td>
-                          <td>{{ idLabel(c.ground_truth_diagnosis_id) }}</td>
-                          <td :class="cellClass(c.pre_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)">
-                            <span>{{ idLabel(c.pre_top1_diagnosis_term_id) }}</span>
-                            <i v-if="match(c.pre_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-1" />
-                            <i v-else class="pi pi-times text-red-400 ml-1" />
-                          </td>
-                          <td>
-                            <div :class="top3CellClass(top3Ids(c,'pre'), c.ground_truth_diagnosis_id)" class="inline-flex align-items-center">
-                              <span>
-                                <template v-if="top3Ids(c,'pre') != null">
-                                  {{ (top3Ids(c,'pre') || []).map(idLabel).join(', ') || '—' }}
-                                </template>
-                                <template v-else>—</template>
-                              </span>
-                              <i v-if="anyMatch(top3Ids(c,'pre'), c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-2" />
-                              <i v-else class="pi pi-times text-red-400 ml-2" />
-                            </div>
-                          </td>
-                          <td :class="cellClass(c.post_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)">
-                            <span>{{ idLabel(c.post_top1_diagnosis_term_id) }}</span>
-                            <i v-if="match(c.post_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-1" />
-                            <i v-else class="pi pi-times text-red-400 ml-1" />
-                          </td>
-                          <td>
-                            <div :class="top3CellClass(top3Ids(c,'post'), c.ground_truth_diagnosis_id)" class="inline-flex align-items-center">
-                              <span>
-                                <template v-if="top3Ids(c,'post') != null">
-                                  {{ (top3Ids(c,'post') || []).map(idLabel).join(', ') || '—' }}
-                                </template>
-                                <template v-else>—</template>
-                              </span>
-                              <i v-if="anyMatch(top3Ids(c,'post'), c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-2" />
-                              <i v-else class="pi pi-times text-red-400 ml-2" />
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <GameReportCaseTable :cases="reportState[g.block_index].data.cases" :termMap="termMap" />
                 </div>
                 <div v-else class="text-xs text-500">Report not ready yet (block may be in progress or finalizing).</div>
               </div>
@@ -131,6 +78,7 @@ import { useGamesStore } from '../stores/gamesStore';
 import { useToast } from 'primevue/usetoast';
 import { getGame } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
+import GameReportCaseTable from './GameReportCaseTable.vue';
 
 const gamesStore = useGamesStore();
 const toast = useToast();
@@ -235,23 +183,6 @@ function toggleDetails(block:number){
   loadReport(block);
 }
 
-function idLabel(id?:number|null){
-  if(id==null) return '—';
-  return termMap.value[id] || `#${id}`;
-}
-function match(a?:number|null, b?:number|null){ return a!=null && b!=null && a===b; }
-function cellClass(a?:number|null, gt?:number|null){ return match(a,gt) ? 'u-bg-success-soft font-medium' : 'text-500'; }
-function anyMatch(arr?: (number|null)[] | null, gt?: number|null){
-  if(!arr || gt==null) return false; return arr.some(id=>id===gt);
-}
-function top3CellClass(arr?: (number|null)[] | null, gt?: number|null){
-  return anyMatch(arr, gt) ? 'u-bg-success-soft font-medium' : 'text-500';
-}
-function top3Ids(c:any, phase:'pre'|'post') : (number|null)[] | null {
-  // Accept both *_top3_diagnosis_term_ids and *_top_diagnosis_term_ids from backend variants
-  if(phase==='pre') return c.pre_top3_diagnosis_term_ids || c.pre_top_diagnosis_term_ids || null;
-  return c.post_top3_diagnosis_term_ids || c.post_top_diagnosis_term_ids || null;
-}
 
 // (Removed duplicate toggleDetails override; merged report case loading into primary function)
 
@@ -288,6 +219,7 @@ function viewReport(block:number){ router.push(`/game/report/${block}`); }
 .fade-enter-from, .fade-leave-to { opacity:0; }
 .report-cases { font-size:.75rem; }
 .report-cases li { line-height:1.2; }
+
 
 /* Dark overrides removed: token system supplies correct surfaces & text */
 </style>

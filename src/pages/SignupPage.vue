@@ -100,6 +100,23 @@
                 />
               </div>
 
+              <!-- Country Field -->
+              <div class="col-12 md:col-6">
+                <label for="country" class="field-label with-icon"><i class="pi pi-globe" /> Country</label>
+                <Dropdown 
+                  id="country"
+                  v-model="formData.country_code"
+                  :options="countries"
+                  optionLabel="name"
+                  optionValue="code"
+                  class="w-full"
+                  :loading="countriesLoading"
+                  placeholder="Select country"
+                  filter
+                  required
+                />
+              </div>
+
               <div class="col-12">
                 <Button 
                   type="submit" 
@@ -166,26 +183,48 @@ const formData = reactive({
   age: null as number | null, // raw age captured from user (not sent directly to backend)
   years_experience: null as number | null,
   years_derm_experience: null as number | null,
-  role_id: null as number | null
+  role_id: null as number | null,
+  country_code: null as string | null
 });
 
 const loading = ref(false);
 const rolesLoading = ref(false); // Loading state for roles dropdown
 const roles = ref<Role[]>([]); // To store fetched roles
+const countriesLoading = ref(false);
+interface Country { code: string; name: string; }
+const countries = ref<Country[]>([]);
 
 // (gender field removed)
 
-// Fetch roles when the component mounts
+function normalizeCountries(data: any): Country[] {
+  if (Array.isArray(data)) {
+    // Expecting array of { code, name }
+    return data as Country[];
+  }
+  if (data && typeof data === 'object') {
+    // Map form: { "AU": "Australia", ... }
+    return Object.entries(data).map(([code, name]) => ({ code, name: String(name) }));
+  }
+  return [];
+}
+
+// Fetch roles and countries when the component mounts
 onMounted(async () => {
   rolesLoading.value = true;
+  countriesLoading.value = true;
   try {
-    const response = await apiClient.get<Role[]>('/api/roles/'); // Added /api prefix to match OpenAPI spec
-    roles.value = response.data;
+    const [rolesResp, countriesResp] = await Promise.all([
+      apiClient.get<Role[]>('/api/roles/'),
+      apiClient.get('/api/countries/')
+    ]);
+    roles.value = rolesResp.data;
+    countries.value = normalizeCountries(countriesResp.data);
   } catch (error) {
-    console.error("Failed to fetch roles:", error);
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Could not load roles.', life: 3000 });
+    console.error('Failed to fetch signup metadata:', error);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Could not load roles/countries.', life: 3000 });
   } finally {
     rolesLoading.value = false;
+    countriesLoading.value = false;
   }
 });
 
@@ -193,8 +232,15 @@ const handleSignup = async () => {
   loading.value = true;
   try {
     // Ensure required fields are not null before sending
+    const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code } = formData;
     const payload = {
-      ...formData,
+      email,
+      password,
+      age_bracket,
+      years_experience,
+      years_derm_experience,
+      role_id,
+      country_code,
       // FastAPI Users expects these defaults, but we provide them
       is_active: true,
       is_superuser: false,

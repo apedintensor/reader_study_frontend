@@ -739,6 +739,13 @@ function handleBlockContinue() {
       <span class="gp-label">{{ gameProgressBarLabel }}</span>
     </ProgressBar>
   </div>
+  <!-- Post-AI accuracy reminder -->
+  <div v-if="isPostAiPhase" class="ai-accuracy-note mb-3">
+    <strong class="mr-1">Note:</strong>
+    AI suggestions are assistive and not 100% accurate.
+    Overall accuracy — Top-1: <span class="stat">49.50%</span>, Top-3: <span class="stat">67.50%</span>.
+    Please use your clinical judgment.
+  </div>
   <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
   <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
   <!-- Metadata display removed -->
@@ -746,6 +753,10 @@ function handleBlockContinue() {
 
       <!-- Right Column - Assessment Form -->
       <div class="col-12 lg:col-7">
+  <!-- Pre-AI quick guidance -->
+  <div v-if="!isPostAiPhase" class="preai-help-note mb-3">
+    Start with your own assessment: enter your Top 1–3 diagnoses (Rank 1 required), answer the Biopsy and Referral questions, and set confidence and certainty. You'll see AI suggestions afterwards.
+  </div>
   <AssessmentForm
           :formData="currentFormData"
           :diagnosisTerms="diagnosisTerms"
@@ -793,4 +804,29 @@ function handleBlockContinue() {
 .game-progress-bar { position:relative; }
 .game-progress-bar .gp-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:600; letter-spacing:.5px; color:var(--color-white); mix-blend-mode:normal; }
 .dark .game-progress-bar .gp-label { color:#fff; }
+
+/* Subtle caution banner for Post-AI phase */
+.ai-accuracy-note {
+  padding: 0.75rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--warning-color, #d97706);
+  background: var(--highlight-warning-bg, rgba(245, 158, 11, 0.08));
+  color: var(--text-color, #374151);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.ai-accuracy-note .stat {
+  font-weight: 600;
+}
+
+/* Subtle info banner for Pre-AI phase */
+.preai-help-note {
+  padding: 0.75rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent-primary, #6366f1);
+  background: var(--highlight-bg, rgba(99,102,241,0.08));
+  color: var(--text-color, #374151);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
 </style>

@@ -63,7 +63,7 @@
                          :severity="completionPercentage === 100 ? 'success' : 'info'"
                          :icon="completionPercentage === 100 ? 'pi pi-check' : 'pi pi-chart-line'" />
                   </div>
-                  <ProgressBar :value="completionPercentage" class="h-1rem" />
+                  <ProgressBar :value="completionPercentage" :showValue="false" class="h-1rem" />
                 </div>
               </div>
             </div>
