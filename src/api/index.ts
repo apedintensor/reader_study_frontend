@@ -44,6 +44,12 @@ if (!resolvedBase) {
   }
 }
 
+// Safety: avoid mixed content in production if misconfigured with http://
+if (!import.meta.env.DEV && resolvedBase && /^http:\/\//i.test(resolvedBase)) {
+  console.warn('[api] Detected insecure base URL in production; upgrading to HTTPS:', resolvedBase);
+  resolvedBase = resolvedBase.replace(/^http:\/\//i, 'https://');
+}
+
 const apiClient = axios.create({
   baseURL: resolvedBase,
   headers: { 'Content-Type': 'application/json' },

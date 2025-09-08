@@ -95,8 +95,9 @@
                   optionValue="id" 
                   class="w-full"
                   :loading="rolesLoading"
+                  :disabled="rolesLoading || roles.length === 0"
                   placeholder="Select role"
-                  required 
+                  :required="roles.length > 0"
                 />
               </div>
 
@@ -111,10 +112,16 @@
                   optionValue="code"
                   class="w-full"
                   :loading="countriesLoading"
+                  :disabled="countriesLoading || countries.length === 0"
                   placeholder="Select country"
                   filter
-                  required
+                  :required="countries.length > 0"
                 />
+                <small v-if="countriesLoading" class="u-text-muted">Loading countries…</small>
+                <div v-else-if="countries.length === 0" class="mt-1">
+                  <small class="u-text-muted mr-2">Countries couldn't load.</small>
+                  <Button type="button" label="Retry" size="small" text @click="retryCountries" />
+                </div>
               </div>
 
               <div class="col-12">
@@ -208,25 +215,59 @@ function normalizeCountries(data: any): Country[] {
   return [];
 }
 
-// Fetch roles and countries when the component mounts
+// Fetch roles and countries when the component mounts (independent so one failure doesn't block the other)
 onMounted(async () => {
   rolesLoading.value = true;
   countriesLoading.value = true;
   try {
-    const [rolesResp, countriesResp] = await Promise.all([
+    const [rolesRes, countriesRes] = await Promise.allSettled([
       apiClient.get<Role[]>('/api/roles/'),
       apiClient.get('/api/countries/')
     ]);
-    roles.value = rolesResp.data;
-    countries.value = normalizeCountries(countriesResp.data);
-  } catch (error) {
-    console.error('Failed to fetch signup metadata:', error);
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Could not load roles/countries.', life: 3000 });
+
+    // Roles result handling
+    if (rolesRes.status === 'fulfilled') {
+      roles.value = rolesRes.value.data;
+    } else {
+      console.warn('Failed to fetch roles:', rolesRes.reason);
+      toast.add({ severity: 'warn', summary: 'Roles', detail: 'Could not load roles.', life: 2500 });
+    }
+
+    // Countries result handling with fallback to /countries (no /api) if needed
+    if (countriesRes.status === 'fulfilled') {
+      countries.value = normalizeCountries(countriesRes.value.data);
+    } else {
+      console.warn('Failed to fetch /api/countries, trying /countries ...', countriesRes.reason);
+      try {
+        const fallback = await apiClient.get('/countries');
+        countries.value = normalizeCountries(fallback.data);
+      } catch (fallbackErr) {
+        console.warn('Failed to fetch countries fallback:', fallbackErr);
+        toast.add({ severity: 'warn', summary: 'Countries', detail: 'Could not load countries.', life: 2500 });
+      }
+    }
   } finally {
     rolesLoading.value = false;
     countriesLoading.value = false;
   }
 });
+
+async function retryCountries(){
+  countriesLoading.value = true;
+  try {
+    const res = await apiClient.get('/api/countries/');
+    countries.value = normalizeCountries(res.data);
+  } catch (err) {
+    try {
+      const fb = await apiClient.get('/countries');
+      countries.value = normalizeCountries(fb.data);
+    } catch (e) {
+      toast.add({ severity:'warn', summary:'Countries', detail:'Retry failed. Try again later.', life:2500 });
+    }
+  } finally {
+    countriesLoading.value = false;
+  }
+}
 
 const handleSignup = async () => {
   loading.value = true;
