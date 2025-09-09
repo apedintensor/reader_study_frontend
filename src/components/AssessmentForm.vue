@@ -12,6 +12,7 @@
             <SelectButton id="changeDiagnosis"
                           name="changeDiagnosis"
                           v-model="formData.changeDiagnosis"
+                          @update:modelValue="onChangeDiagnosisUserToggle"
                           :options="changeOptions"
                           optionLabel="label"
                           optionValue="value"
@@ -69,6 +70,7 @@
           <div v-if="isPostAiPhase" class="field mb-3 change-management-toggle">
             <label id="changeManagement-label" class="font-medium mb-2">Did AI suggestions change your management plan?</label>
             <SelectButton id="changeManagement" name="changeManagement" v-model="formData.changeManagement"
+                          @update:modelValue="onChangeManagementUserToggle"
                           :options="changeOptions"
                           optionLabel="label"
                           optionValue="value"
@@ -231,11 +233,16 @@ const selectedRank1 = ref<DiagnosisTermSuggestion | null>(null);
 const selectedRank2 = ref<DiagnosisTermSuggestion | null>(null);
 const selectedRank3 = ref<DiagnosisTermSuggestion | null>(null);
 
+// Track whether the user manually toggled the change flags (vs. auto-set by parent)
+const changeDiagnosisSelectedByUser = ref(false);
+const changeManagementSelectedByUser = ref(false);
+
 // Track original primary diagnosis at time user indicates change
 const originalPrimaryAtChange = ref<string | null>(null);
 const showChangeDiagnosisPrompt = computed(() => {
   if (!props.isPostAiPhase) return false;
   if (props.formData.changeDiagnosis !== true) return false;
+  if (!changeDiagnosisSelectedByUser.value) return false; // show only if user manually selected Yes
   // If user has not modified the primary diagnosis after toggling yes
   return originalPrimaryAtChange.value != null && originalPrimaryAtChange.value === props.formData.diagnosisRank1Text;
 });
@@ -245,6 +252,7 @@ const originalManagementAtChange = ref<{ biopsy: boolean | null; referral: boole
 const showChangeManagementPrompt = computed(() => {
   if (!props.isPostAiPhase) return false;
   if (props.formData.changeManagement !== true) return false;
+  if (!changeManagementSelectedByUser.value) return false; // show only if user manually selected Yes
   if (!originalManagementAtChange.value) return false;
   const unchangedBiopsy = originalManagementAtChange.value.biopsy === props.formData.biopsyRecommended;
   const unchangedReferral = originalManagementAtChange.value.referral === props.formData.referralRecommended;
@@ -254,21 +262,31 @@ const showChangeManagementPrompt = computed(() => {
 
 watch(() => props.formData.changeDiagnosis, (val) => {
   if (val === true) {
-    // snapshot current value
-    originalPrimaryAtChange.value = props.formData.diagnosisRank1Text || '';
+    // Only snapshot if user manually selected Yes; skip when auto-set
+    if (changeDiagnosisSelectedByUser.value) {
+      originalPrimaryAtChange.value = props.formData.diagnosisRank1Text || '';
+    } else {
+      originalPrimaryAtChange.value = null;
+    }
   } else {
     originalPrimaryAtChange.value = null;
+    if (val === false) changeDiagnosisSelectedByUser.value = false;
   }
 });
 
 watch(() => props.formData.changeManagement, (val) => {
   if (val === true) {
-    originalManagementAtChange.value = {
-      biopsy: props.formData.biopsyRecommended,
-      referral: props.formData.referralRecommended
-    };
+    if (changeManagementSelectedByUser.value) {
+      originalManagementAtChange.value = {
+        biopsy: props.formData.biopsyRecommended,
+        referral: props.formData.referralRecommended
+      };
+    } else {
+      originalManagementAtChange.value = null;
+    }
   } else {
     originalManagementAtChange.value = null;
+    if (val === false) changeManagementSelectedByUser.value = false;
   }
 });
 
@@ -291,6 +309,14 @@ function handleSelect(term: DiagnosisTermSuggestion, rank: 1 | 2 | 3) {
   else if (rank === 2) selectedRank2.value = term;
   else selectedRank3.value = term;
   emit('select-diagnosis', { rank, term });
+}
+
+function onChangeDiagnosisUserToggle() {
+  changeDiagnosisSelectedByUser.value = true;
+}
+
+function onChangeManagementUserToggle() {
+  changeManagementSelectedByUser.value = true;
 }
 
 const yesNoOptions = [
