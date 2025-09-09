@@ -44,7 +44,7 @@ This is a comprehensive web-based clinical reader study platform designed to eva
   /api                → Axios API abstraction
   /utils              → LocalStorage caching, formatters
   /assets             → Static images
-/tests                → Cypress tests
+/cypress             → Cypress end-to-end tests
 ```
 
 ---
@@ -61,22 +61,28 @@ This is a comprehensive web-based clinical reader study platform designed to eva
 
 ### 🧪 Pre-AI Form Inputs
 
-* Top 3 ranked diagnosis (text)
-* Confidence score (1–5 slider)
-* Management strategy (dropdown + optional free-text)
+* Top 3 ranked diagnoses (free-text with autocomplete)
+* Confidence score (1–5)
 * Certainty score (1–5)
+* Management questions: Biopsy recommended? Refer to Dermatology? (Yes/No)
+
+UI affordance:
+* A short guidance banner appears in Pre‑AI to explain the steps (enter Top‑1…Top‑3, set confidence/certainty, answer management questions).
 
 ### 🤖 Post-AI Phase
 
-* Show Top-5 AI predictions (bar chart with rank + confidence)
-* Repeat the form inputs above, prefixed with “Updated”
-* AI output from `/ai_outputs/case/{id}`
+* Show Top‑5 AI predictions (table with rank + confidence)
+* Display an accuracy reminder: AI is not 100% accurate (Overall Top‑1: 49.50%, Top‑3: 67.50%)
+* Repeat the form inputs (Updated Top‑1…Top‑3, confidence, certainty, management questions)
+* Additional impact questions: changed primary diagnosis? changed management plan? perceived AI usefulness
+* AI output from `/api/ai_outputs/case/{id}`
 
 ---
 
 ## 🔒 Authentication Logic
 
-* Login via `/auth/jwt/login`, save `access_token` to `localStorage`
+* Login via `/api/auth/jwt/login`, save `access_token` to `localStorage`
+* Signup via `/api/auth/register` (payload includes role and optional country_code)
 * On app init, check for token → if missing or invalid, redirect to `/login`
 * No refresh token → user must re-login on expiry
 
@@ -86,28 +92,28 @@ This is a comprehensive web-based clinical reader study platform designed to eva
 
 * User state stored in `userStore`, synced with localStorage
 * Case progress tracked in `caseStore`
-* On “Next” click:
+* On submit (per phase):
 
-  * Save assessment via `/assessments/`
-  * Save diagnoses via `/diagnoses/`
-  * Save management plan via `/management_plans/`
+  * Submit assessment via `POST /api/assessment/` (includes `diagnosis_entries` array in the payload)
 * Save responses locally as backup using `localStorage`
 * When resuming, try to load from local first, then from API
+* After completing Pre‑AI, Post‑AI form fields hydrate from Pre‑AI values for convenience
 
 ---
 
 ## 📤 API Access & Assumptions
 
-* Use Axios wrapper for all API calls
+* Use Axios wrapper (`src/api/index.ts`) for all API calls
 * Token is passed via `Authorization: Bearer {token}`
-* Use API endpoints:
+* All endpoints are served under the `/api` prefix
+* Representative endpoints:
 
-  * `/cases/`, `/cases/{id}`
-  * `/images/case/{id}`
-  * `/case_metadata/case/{id}`
-  * `/ai_outputs/case/{id}`
-  * `/assessments/`, `/diagnoses/`, `/management_plans/`
-* Use `user_id` from `/auth/users/me` to associate responses
+  * Auth: `/api/auth/jwt/login`, `/api/auth/register`
+  * Reference: `/api/roles/`, `/api/countries/`, `/api/diagnosis_terms/`
+  * Cases: `/api/cases/{id}`, `/api/images/case/{id}`
+  * AI: `/api/ai_outputs/case/{id}`
+  * Assessments: `POST /api/assessment/` (includes `diagnosis_entries`)
+* Base URL is configured via `VITE_API_BASE_URL` (no trailing slash, no `/api` suffix). In development, Vite proxy handles `/api/*`.
 
 ---
 
@@ -115,8 +121,10 @@ This is a comprehensive web-based clinical reader study platform designed to eva
 
 * Cypress tests should cover:
 
-  * Signup → Profile → Dashboard
+  * Signup (email, password, role, country, years of experience) → Dashboard
   * Case flow (pre/post-AI)
+    * Pre‑AI guidance banner is visible
+    * Post‑AI accuracy notice is visible
   * Resume flow
   * Skipping a case
   * LocalStorage fallback
@@ -126,11 +134,15 @@ This is a comprehensive web-based clinical reader study platform designed to eva
 
 ## 🔧 Design & Component Guidelines
 
-* Use **PrimeVue** for all UI (Form inputs, Buttons, Carousels, Charts)
+* Use **PrimeVue** for all UI (Form inputs, Buttons, DataTable, Charts)
 * Use **PrimeIcons** for visual cues
 * Use **PrimeFlex** grid utilities for layout
 * Prefer reusable form field components where possible
 * Form validation handled via PrimeVue
+
+Shared components:
+* `GameReportCaseTable.vue` – reusable case details table used on dashboard and game report pages
+* `AIPredictionsTable.vue` – renders AI Top‑N predictions with confidence bars
 
 ---
 
@@ -175,7 +187,7 @@ This is a comprehensive web-based clinical reader study platform designed to eva
 ## 📂 Coding Conventions
 
 * All files named in `PascalCase.vue`
-* Store modules named `camelCaseStore.js`
+* Store modules named `camelCaseStore.ts`
 * Use async/await with error handling
 * Use constants or enums for:
 
