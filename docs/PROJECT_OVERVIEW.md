@@ -214,7 +214,7 @@ Shared components:
 
 This project aims to:
 
-* Provide a seamless case-by-case assessment experience.
-* Compare clinician decisions pre/post-AI.
-* Capture detailed form input and sync it reliably.
-* Be tested thoroughly with Cypress and resilient to disconnects.
+* Provide a seamless case-by-case assessment experience
+* Compare clinician decisions pre/post-AI
+* Capture detailed form input and sync it reliably
+* Be tested thoroughly with Cypress and resilient to disconnects
