@@ -3,8 +3,8 @@
     <template #title>
       <div class="flex flex-column align-items-center gap-3 w-full">
         <span class="title-line games-intro">
-          <span class="line">Play quick 10‑case rounds to sharpen your diagnostic skills.</span>
-          <span class="line">See how AI boosts accuracy—each game advances your mastery.</span>
+          <span class="line">Complete at least 10 cases to finish one game,</span>
+          <span class="line">but feel free to take more!</span>
         </span>
         <div class="start-btn-container">
           <Button v-if="!allExhausted" :label="nextActionLabel" icon="pi pi-play" class="p-button-rounded big-start-btn cta-start-btn" :loading="advancing" :disabled="advancing" @click="onAdvance" />

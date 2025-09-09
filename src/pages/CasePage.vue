@@ -742,9 +742,8 @@ function handleBlockContinue() {
   <!-- Post-AI accuracy reminder -->
   <div v-if="isPostAiPhase" class="ai-accuracy-note mb-3">
     <strong class="mr-1">Note:</strong>
-    AI suggestions are assistive and not 100% accurate.
-    Overall accuracy — Top-1: <span class="stat">49.50%</span>, Top-3: <span class="stat">67.50%</span>.
-    Please use your clinical judgment.
+    AI suggestions are assistive tools and not 100% accurate. Performance on validation dataset: Top-1 accuracy <span class="stat">49.50%</span>, Top-3 accuracy <span class="stat">67.50%</span> among 100+ skin conditions.
+    Always rely on your clinical judgment.
   </div>
   <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
   <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
