@@ -5,6 +5,7 @@ import { getGames, getGame, createNextGame, getGameAssignments, getActiveGame, g
 export const useGamesStore = defineStore('games', () => {
   const games = ref<GameSummary[]>([]);
   const assignmentsByBlock = ref<Record<number, Assignment[]>>({});
+  const blockSizes = ref<Record<number, number>>({}); // persist known block sizes
   const loadingGames = ref(false);
   const loadingAssignments = ref(false);
   const creatingNext = ref(false);
@@ -19,6 +20,9 @@ export const useGamesStore = defineStore('games', () => {
 
   function setAssignments(block: number, assignments: Assignment[]) {
     assignmentsByBlock.value[block] = assignments.sort((a,b)=>a.display_order - b.display_order);
+  // Track the largest known size for this block
+  const size = assignments.length;
+  if (size > (blockSizes.value[block] ?? 0)) blockSizes.value[block] = size;
   }
 
   function upsertGame(summary: GameSummary) {
@@ -77,6 +81,7 @@ export const useGamesStore = defineStore('games', () => {
       if (!assignments.length) return assignments; // no remaining cases
       const block = assignments[0].block_index;
       setAssignments(block, assignments);
+  blockSizes.value[block] = Math.max(blockSizes.value[block] ?? 0, assignments.length);
       // optimistic placeholder game summary (will be filled later)
       if (!games.value.some(g => g.block_index === block)) {
         upsertGame({ block_index: block });
@@ -115,8 +120,8 @@ export const useGamesStore = defineStore('games', () => {
 
   function blockProgress(block: number) {
     const list = getBlockAssignments(block);
-    if (!list.length) return { pre: 0, post: 0, total: 0, pct: 0 };
-    const total = list.length;
+  if (!list.length && !(blockSizes.value[block] > 0)) return { pre: 0, post: 0, total: 0, pct: 0 };
+  const total = Math.max(list.length, blockSizes.value[block] ?? 0);
     const post = list.filter(a => a.completed_post_at).length;
     const pre = list.filter(a => a.completed_pre_at).length;
     return { pre, post, total, pct: (post/total)*100 };
@@ -137,6 +142,7 @@ export const useGamesStore = defineStore('games', () => {
     try {
       const list = await getGameAssignments(block, !!opts.verbose);
       setAssignments(block, list);
+  blockSizes.value[block] = Math.max(blockSizes.value[block] ?? 0, list.length);
       // After loading assignments, attempt summary refresh if block possibly already done
       refreshSummaryIfCompleted(block);
     } finally {
@@ -185,6 +191,7 @@ export const useGamesStore = defineStore('games', () => {
       if (active && Array.isArray(active.assignments) && active.assignments.length) {
         const block = active.block_index ?? active.assignments[0].block_index;
         setAssignments(block, active.assignments as Assignment[]);
+    blockSizes.value[block] = Math.max(blockSizes.value[block] ?? 0, (active.assignments as Assignment[]).length);
         if (!games.value.some(g => g.block_index === block)) {
           upsertGame({ block_index: block }); // placeholder summary
         }

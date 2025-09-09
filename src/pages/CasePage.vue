@@ -180,18 +180,36 @@ const blockProgress = computed(() => {
   return gamesStore.blockProgress(currentBlockIndex.value);
 });
 
-// Percent of post (fully completed) assessments; fallback to pre if no posts yet
+// Ensure we have the full assignment list for this block; hydrateActiveGame can seed only the current assignment,
+// which makes total=1 and shows 50% after first PRE submission. Force-load the block once we know its index.
+watch(currentBlockIndex, async (block) => {
+  if (block != null) {
+    try {
+  await gamesStore.loadAssignments(block, { force: true, verbose: true });
+    } catch (_) { /* non-fatal */ }
+  }
+}, { immediate: false });
+
+// Percent with partial credit for Pre-AI: each pre-only case counts as 0.5, post counts as 1
+// Denominator hard-coded to 10 (fixed game size)
 const gameProgressPercent = computed(() => {
   const prog = blockProgress.value; if (!prog) return 0;
-  if (prog.total === 0) return 0;
-  // Use post completion percent as main indicator
-  return Math.round((prog.post / prog.total) * 100);
+  const { pre = 0, post = 0 } = prog as any;
+  const TOTAL = 10;
+  const preOnly = Math.max(0, pre - post);
+  const weighted = Math.min(TOTAL, post + preOnly * 0.5);
+  return Math.round((weighted / TOTAL) * 100);
 });
 
-// Label for inside bar (just counts, no percentage)
+// Label for inside bar: show completed and in-progress counts
 const gameProgressBarLabel = computed(() => {
-  const prog = blockProgress.value; if(!prog || !prog.total) return '';
-  return `${prog.post}/${prog.total} cases completed`;
+  const prog = blockProgress.value; if(!prog) return '';
+  const { pre = 0, post = 0 } = prog as any;
+  const total = 10;
+  const preOnly = Math.max(0, pre - post);
+  return preOnly > 0
+    ? `${post}/${total} completed • ${preOnly} pre-AI`
+    : `${post}/${total} completed`;
 });
 
 
@@ -432,6 +450,10 @@ onMounted(async () => {
   }
   // Hydrate active game assignments if user refreshed directly on a case page
   await gamesStore.hydrateActiveGame();
+  // After hydrating, force-load assignments for the current block so progress totals are accurate
+  if (currentBlockIndex.value != null) {
+    try { await gamesStore.loadAssignments(currentBlockIndex.value, { force: true, verbose: true }); } catch(_) {}
+  }
   // Determine if this case was the final remaining based on activeRemaining (set when navigated via advanceToNext)
   if ((gamesStore as any).activeRemaining === 1) {
     wasFinalInBlock.value = true;
@@ -540,7 +562,7 @@ const handlePreAiSubmit = async () => {
   // Mark assignment pre completion locally for dashboard progress
   (assignment as any).completed_pre_at = new Date().toISOString();
 
-    await caseStore.markProgress(caseId.value, false); // Mark pre-AI as complete
+  await caseStore.markProgress(caseId.value, false); // Mark pre-AI as complete
     // clearLocalStorage(preAiLocalStorageKey.value); // Keep pre-AI data for potential copy to post-AI
     submitted.value = false;
     toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
