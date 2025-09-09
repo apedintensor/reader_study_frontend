@@ -439,6 +439,27 @@ watch(isPostAiPhase, async (newPhase, oldPhase) => {
   }
 }, { immediate: false }); // `immediate: false` to avoid running on initial load before route watcher
 
+// --- Auto-set change flags in Post-AI when user changes diagnosis or management compared to Pre-AI ---
+watch(() => postAiFormData.diagnosisRank1Text, (newVal) => {
+  if (!isPostAiPhase.value) return;
+  const pre = (preAiFormData.diagnosisRank1Text || '').trim().toLowerCase();
+  const post = (newVal || '').trim().toLowerCase();
+  // Set true when different, false when same/empty match
+  postAiFormData.changeDiagnosis = pre !== post;
+});
+
+watch([
+  () => postAiFormData.biopsyRecommended,
+  () => postAiFormData.referralRecommended
+], ([bPost, rPost]) => {
+  if (!isPostAiPhase.value) return;
+  const bPre = preAiFormData.biopsyRecommended;
+  const rPre = preAiFormData.referralRecommended;
+  // Any difference counts as a management change
+  const changed = (bPre !== bPost) || (rPre !== rPost);
+  postAiFormData.changeManagement = changed;
+});
+
 // Ensure cases & assessments are loaded on direct navigation / refresh
 onMounted(async () => {
   if (!userId.value) return; // wait for user login if needed
