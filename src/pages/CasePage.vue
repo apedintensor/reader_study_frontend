@@ -57,8 +57,8 @@ interface AssessmentCreate {
   phase: 'PRE' | 'POST';
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  biopsy_recommended?: boolean | null;
-  referral_recommended?: boolean | null;
+  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
+  next_step?: 'reassure' | 'manage' | 'refer' | null;
   changed_primary_diagnosis?: boolean | null; // POST only
   changed_management_plan?: boolean | null;   // POST only
   ai_usefulness?: string | null;              // POST only
@@ -220,8 +220,8 @@ const preAiFormData = reactive({
   diagnosisRank3Text: null as string | null,
   confidenceScore: 3,
   certaintyScore: 3,
-  biopsyRecommended: null as boolean | null,
-  referralRecommended: null as boolean | null,
+  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
+  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
 });
 
 const postAiFormData = reactive({
@@ -233,8 +233,8 @@ const postAiFormData = reactive({
   changeDiagnosis: null as boolean | null,
   changeManagement: null as boolean | null,
   aiUsefulness: null as string | null,
-  biopsyRecommended: null as boolean | null,
-  referralRecommended: null as boolean | null,
+  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
+  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
 });
 
 const currentFormData = computed(() => isPostAiPhase.value ? postAiFormData : preAiFormData);
@@ -315,11 +315,11 @@ const fetchData = async () => {
                 postAiFormData.diagnosisRank3Text = parsedPreAi.diagnosisRank3Text;
                 postAiFormData.confidenceScore = parsedPreAi.confidenceScore;
                 postAiFormData.certaintyScore = parsedPreAi.certaintyScore;
-                if (postAiFormData.biopsyRecommended == null) {
-                  postAiFormData.biopsyRecommended = parsedPreAi.biopsyRecommended ?? null;
+                if (postAiFormData.investigationPlan == null) {
+                  postAiFormData.investigationPlan = parsedPreAi.investigationPlan ?? null;
                 }
-                if (postAiFormData.referralRecommended == null) {
-                  postAiFormData.referralRecommended = parsedPreAi.referralRecommended ?? null;
+                if (postAiFormData.nextStep == null) {
+                  postAiFormData.nextStep = parsedPreAi.nextStep ?? null;
                 }
                  console.log('Copied Pre-AI data to Post-AI form');
             } catch (e) {
@@ -377,13 +377,13 @@ const clearLocalStorage = (key: string) => {
 const resetFormData = () => {
   Object.assign(preAiFormData, {
   diagnosisRank1Text: null, diagnosisRank2Text: null, diagnosisRank3Text: null,
-  confidenceScore: 3, certaintyScore: 3, biopsyRecommended: null, referralRecommended: null,
+  confidenceScore: 3, certaintyScore: 3, investigationPlan: null, nextStep: null,
   });
   Object.assign(postAiFormData, {
   diagnosisRank1Text: null, diagnosisRank2Text: null, diagnosisRank3Text: null,
   confidenceScore: 3, certaintyScore: 3,
     changeDiagnosis: null, changeManagement: null, aiUsefulness: null,
-  biopsyRecommended: null, referralRecommended: null,
+  investigationPlan: null, nextStep: null,
   });
 };
 
@@ -419,11 +419,11 @@ watch(isPostAiPhase, async (newPhase, oldPhase) => {
       await fetchData();
       // After fetch, ensure management binary choices are carried over if not yet set
       if (newPhase) {
-        if (postAiFormData.biopsyRecommended == null && preAiFormData.biopsyRecommended != null) {
-          postAiFormData.biopsyRecommended = preAiFormData.biopsyRecommended;
+        if (postAiFormData.investigationPlan == null && preAiFormData.investigationPlan != null) {
+          postAiFormData.investigationPlan = preAiFormData.investigationPlan;
         }
-        if (postAiFormData.referralRecommended == null && preAiFormData.referralRecommended != null) {
-          postAiFormData.referralRecommended = preAiFormData.referralRecommended;
+        if (postAiFormData.nextStep == null && preAiFormData.nextStep != null) {
+          postAiFormData.nextStep = preAiFormData.nextStep;
         }
         // Always carry over diagnosis text fields if post-AI fields are still empty
         if (!postAiFormData.diagnosisRank1Text && preAiFormData.diagnosisRank1Text) {
@@ -439,6 +439,16 @@ watch(isPostAiPhase, async (newPhase, oldPhase) => {
   }
 }, { immediate: false }); // `immediate: false` to avoid running on initial load before route watcher
 
+// Auto-set changeManagement when either management choice differs between pre and post
+watch([
+  () => postAiFormData.investigationPlan,
+  () => postAiFormData.nextStep
+], ([invPost, stepPost]) => {
+  if (!isPostAiPhase.value) return;
+  const changed = (preAiFormData.investigationPlan !== invPost) || (preAiFormData.nextStep !== stepPost);
+  postAiFormData.changeManagement = changed;
+});
+
 // --- Auto-set change flags in Post-AI when user changes diagnosis or management compared to Pre-AI ---
 watch(() => postAiFormData.diagnosisRank1Text, (newVal) => {
   if (!isPostAiPhase.value) return;
@@ -448,17 +458,7 @@ watch(() => postAiFormData.diagnosisRank1Text, (newVal) => {
   postAiFormData.changeDiagnosis = pre !== post;
 });
 
-watch([
-  () => postAiFormData.biopsyRecommended,
-  () => postAiFormData.referralRecommended
-], ([bPost, rPost]) => {
-  if (!isPostAiPhase.value) return;
-  const bPre = preAiFormData.biopsyRecommended;
-  const rPre = preAiFormData.referralRecommended;
-  // Any difference counts as a management change
-  const changed = (bPre !== bPost) || (rPre !== rPost);
-  postAiFormData.changeManagement = changed;
-});
+// (legacy biopsy/referral watcher removed; replaced by investigation/nextStep watcher above)
 
 // Ensure cases & assessments are loaded on direct navigation / refresh
 onMounted(async () => {
@@ -519,8 +519,8 @@ const handlePreAiSubmit = async () => {
     toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter at least a primary diagnosis (Rank 1).', life: 3000 });
     return;
   }
-  if (preAiFormData.biopsyRecommended === null || preAiFormData.referralRecommended === null) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please answer both management questions (Biopsy? and Refer to Dermatology?).', life: 3000 });
+  if (!preAiFormData.investigationPlan || !preAiFormData.nextStep) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select Investigation and Next Step.', life: 3000 });
     return;
   }
   // management strategy removed
@@ -563,8 +563,8 @@ const handlePreAiSubmit = async () => {
       phase: 'PRE',
       diagnostic_confidence: preAiFormData.confidenceScore,
       management_confidence: preAiFormData.certaintyScore,
-      biopsy_recommended: preAiFormData.biopsyRecommended,
-      referral_recommended: preAiFormData.referralRecommended,
+  investigation_plan: preAiFormData.investigationPlan,
+  next_step: preAiFormData.nextStep,
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting PRE assessment payload', assessmentPayload);
@@ -611,8 +611,8 @@ const handlePostAiSubmit = async () => {
     toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please answer the questions about AI impact.', life: 3000 });
     return;
   }
-  if (postAiFormData.biopsyRecommended === null || postAiFormData.referralRecommended === null) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please answer both management questions (Biopsy? and Refer to Dermatology?).', life: 3000 });
+  if (!postAiFormData.investigationPlan || !postAiFormData.nextStep) {
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select Investigation and Next Step.', life: 3000 });
     return;
   }
 
@@ -654,8 +654,8 @@ const handlePostAiSubmit = async () => {
       changed_primary_diagnosis: postAiFormData.changeDiagnosis,
       changed_management_plan: postAiFormData.changeManagement,
       ai_usefulness: postAiFormData.aiUsefulness,
-      biopsy_recommended: postAiFormData.biopsyRecommended,
-      referral_recommended: postAiFormData.referralRecommended,
+  investigation_plan: postAiFormData.investigationPlan,
+  next_step: postAiFormData.nextStep,
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting POST assessment payload', assessmentPayload);
@@ -797,7 +797,7 @@ function handleBlockContinue() {
       <div class="col-12 lg:col-7">
   <!-- Pre-AI quick guidance -->
   <div v-if="!isPostAiPhase" class="preai-help-note mb-3">
-    Start with your own assessment: enter your Top 1–3 diagnoses (Rank 1 required), answer the Biopsy and Referral questions, and set confidence and certainty. You'll see AI suggestions afterwards.
+    Start with your own assessment: enter your Top 1–3 diagnoses (Rank 1 required), choose your Investigation and Next Step, and set confidence and certainty. You'll see AI suggestions afterwards.
   </div>
   <AssessmentForm
           :formData="currentFormData"

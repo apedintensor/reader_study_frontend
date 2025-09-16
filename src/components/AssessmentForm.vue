@@ -80,18 +80,18 @@
                           required
                           v-tooltip.bottom="changeManagementTooltipText" />
             <small v-if="submitted && formData.changeManagement === null" class="p-error mt-2">This field is required.</small>
-            <small v-else-if="showChangeManagementPrompt" class="p-warning mt-2">You indicated the management plan changed. Please update the Biopsy or Referral selections below to reflect your new plan.</small>
+            <small v-else-if="showChangeManagementPrompt" class="p-warning mt-2">You indicated the management plan changed. Please update the selections below to reflect your new plan.</small>
           </div>
-          <div class="grid formgrid aligned-grid">
+          <div class="grid formgrid aligned-grid mgmt-grid">
             <div class="field col-12 md:col-6 centered-field">
-              <label>Biopsy?</label>
-              <SelectButton v-model="formData.biopsyRecommended" :options="yesNoOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && formData.biopsyRecommended === null}" />
-              <small v-if="submitted && formData.biopsyRecommended === null" class="p-error">Select Yes or No.</small>
+              <label>Would you do any further investigations to confirm the diagnosis?</label>
+              <SelectButton v-model="formData.investigationPlan" :options="investigationOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && !formData.investigationPlan}" />
+              <small v-if="submitted && !formData.investigationPlan" class="p-error">Select one option.</small>
             </div>
             <div class="field col-12 md:col-6 centered-field">
-              <label>Refer to Dermatology?</label>
-              <SelectButton v-model="formData.referralRecommended" :options="yesNoOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && formData.referralRecommended === null}" />
-              <small v-if="submitted && formData.referralRecommended === null" class="p-error">Select Yes or No.</small>
+              <label>What would your next step be?</label>
+              <SelectButton v-model="formData.nextStep" :options="nextStepOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && !formData.nextStep}" />
+              <small v-if="submitted && !formData.nextStep" class="p-error">Select one option.</small>
             </div>
           </div>
         </Fieldset>
@@ -189,8 +189,8 @@ interface FormData {
   diagnosisRank3Text: string | null;
   confidenceScore: number;
   certaintyScore: number;
-  biopsyRecommended: boolean | null;
-  referralRecommended: boolean | null;
+  investigationPlan: 'none' | 'biopsy' | 'other' | null;
+  nextStep: 'reassure' | 'manage' | 'refer' | null;
   // Post-AI specific fields - ensure they are optional or handled in parent
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -248,16 +248,16 @@ const showChangeDiagnosisPrompt = computed(() => {
 });
 
 // Track original management selections (biopsy/referral) when user indicates change
-const originalManagementAtChange = ref<{ biopsy: boolean | null; referral: boolean | null } | null>(null);
+const originalManagementAtChange = ref<{ investigationPlan: FormData['investigationPlan']; nextStep: FormData['nextStep'] } | null>(null);
 const showChangeManagementPrompt = computed(() => {
   if (!props.isPostAiPhase) return false;
   if (props.formData.changeManagement !== true) return false;
   if (!changeManagementSelectedByUser.value) return false; // show only if user manually selected Yes
   if (!originalManagementAtChange.value) return false;
-  const unchangedBiopsy = originalManagementAtChange.value.biopsy === props.formData.biopsyRecommended;
-  const unchangedReferral = originalManagementAtChange.value.referral === props.formData.referralRecommended;
-  // Prompt if both management choices remain exactly the same
-  return unchangedBiopsy && unchangedReferral;
+  const unchangedInvestigation = originalManagementAtChange.value.investigationPlan === props.formData.investigationPlan;
+  const unchangedNextStep = originalManagementAtChange.value.nextStep === props.formData.nextStep;
+  // Prompt if both remain exactly the same
+  return unchangedInvestigation && unchangedNextStep;
 });
 
 watch(() => props.formData.changeDiagnosis, (val) => {
@@ -278,8 +278,8 @@ watch(() => props.formData.changeManagement, (val) => {
   if (val === true) {
     if (changeManagementSelectedByUser.value) {
       originalManagementAtChange.value = {
-        biopsy: props.formData.biopsyRecommended,
-        referral: props.formData.referralRecommended
+        investigationPlan: props.formData.investigationPlan,
+        nextStep: props.formData.nextStep
       };
     } else {
       originalManagementAtChange.value = null;
@@ -298,7 +298,7 @@ watch(() => props.formData.diagnosisRank1Text, () => {
 });
 
 // When management selections change after indicating change, prompt will auto-hide if either differs
-watch(() => [props.formData.biopsyRecommended, props.formData.referralRecommended], () => {
+watch(() => [props.formData.investigationPlan, props.formData.nextStep], () => {
   if (props.formData.changeManagement === true && originalManagementAtChange.value) {
     // prompt recomputes automatically
   }
@@ -319,9 +319,16 @@ function onChangeManagementUserToggle() {
   changeManagementSelectedByUser.value = true;
 }
 
-const yesNoOptions = [
-  { label: 'Yes', value: true },
-  { label: 'No', value: false }
+const investigationOptions = [
+  { label: 'None', value: 'none' },
+  { label: 'Biopsy', value: 'biopsy' },
+  { label: 'Other', value: 'other' }
+];
+
+const nextStepOptions = [
+  { label: 'Reassure', value: 'reassure' },
+  { label: 'Manage myself', value: 'manage' },
+  { label: 'Refer', value: 'refer' }
 ];
 
 // Null-safe proxies for autocomplete (component expects string)
@@ -399,6 +406,20 @@ const diagnosisRank3Proxy = computed({
 .aligned-grid { align-items: stretch; }
 .aligned-grid .field { display:flex; flex-direction:column; }
 .aligned-grid label { margin-bottom:.5rem; font-weight:500; }
+
+/* Ensure the two management columns align on one row with labels equalized */
+.mgmt-grid { align-items: stretch; }
+.mgmt-grid .field { justify-content: flex-start; }
+@media (min-width: 768px) {
+  /* Normalize label heights so different text lengths don't push buttons down */
+  .mgmt-grid .field label {
+    min-height: 3rem; /* tweak if needed based on font-size/line-height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+}
 
 /* Centered variant for specific fields */
 .centered-field { align-items:center; text-align:center; }

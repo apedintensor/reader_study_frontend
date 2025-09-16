@@ -35,13 +35,7 @@
               <li class="flex justify-content-between"><span>Top-3</span><span>{{ pct(report.top3_accuracy_pre) }} → {{ pct(report.top3_accuracy_post) }} (<strong :class="deltaClass(report.delta_top3)">{{ deltaDisplay(report.delta_top3) }}</strong>)</span></li>
             </ul>
           </div>
-          <div class="col-12 md:col-6">
-              <h3 class="mt-0 mb-2">Peer Accuracy</h3>
-            <ul class="list-none m-0 p-0 flex flex-column gap-2 text-sm">
-              <li class="flex justify-content-between"><span>Top-1 Post</span><span>{{ pct(report.top1_accuracy_post) }} ({{ percentile(report.peer_percentile_top1) }})</span></li>
-              <li class="flex justify-content-between"><span>Top-3 Post</span><span>{{ pct(report.top3_accuracy_post) }} ({{ percentile(report.peer_percentile_top3) }})</span></li>
-            </ul>
-          </div>
+          
           <!-- Details table (same format as dashboard list) -->
           <div class="col-12" v-if="report?.cases && report.cases.length">
             <div class="font-medium mb-2 flex justify-content-between">
@@ -78,7 +72,7 @@ import ProgressBar from 'primevue/progressbar';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import { useGamesStore } from '../stores/gamesStore';
-import { getGame, canViewReport } from '../api/games';
+import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from '../components/GameReportCaseTable.vue';
 
@@ -129,7 +123,7 @@ const improvementMessage = computed(() => {
 function pct(v?: number){ return v==null ? '—' : Math.round(v*100)+'%'; }
 function deltaDisplay(v?: number){ if(v==null) return '—'; const pts=Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
 function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return 'text-green-500'; if(v<0) return 'text-red-500'; return 'text-500'; }
-function percentile(v?: number){ return v==null ? '—' : `P${Math.round(v*100)}`; }
+
 
 async function fetchReport(){
   if(!Number.isInteger(blockIndex.value) || blockIndex.value < 0){
@@ -138,12 +132,38 @@ async function fetchReport(){
   }
   loading.value = true;
   try {
+    // As a safe guard, check availability first to avoid unnecessary 404s
+    const avail: CanViewReportResponse = await canViewReport(blockIndex.value);
+    const ready = !!(avail?.available ?? avail?.ready);
+    if (!ready) {
+      canView.value = false;
+      const rem = avail?.remaining_cases;
+      const reason = avail?.reason === 'block_incomplete'
+        ? `Report is not ready. ${typeof rem === 'number' ? rem : 'Some'} case(s) remaining in this block.`
+        : 'Report not available yet.';
+      toast.add({ severity:'warn', summary:'Unavailable', detail: reason, life:3000 });
+      return;
+    }
     const data = await getGame(blockIndex.value);
     report.value = data;
     // Add/update store summary cache
   // Optionally integrate into store (skipped: upsertGame not exported)
   } catch(e:any){
-    toast.add({ severity:'warn', summary:'Unavailable', detail:'Report not finalized yet.', life:3000 });
+    // Handle 404 with structured detail
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.detail || e?.message;
+    if (status === 404) {
+      const code = typeof detail === 'object' ? detail?.error : undefined;
+      const rem = typeof detail === 'object' ? detail?.remaining_cases : undefined;
+      if (code === 'block_incomplete') {
+        toast.add({ severity:'warn', summary:'Not Ready', detail:`Report in progress. ${typeof rem==='number'? rem : 'Some'} case(s) left.`, life:3000 });
+      } else {
+        toast.add({ severity:'warn', summary:'Not Found', detail:'Report will appear once the block is finished.', life:3000 });
+      }
+      canView.value = false;
+    } else {
+      toast.add({ severity:'error', summary:'Error', detail: 'Failed to load report.', life:3000 });
+    }
   } finally { loading.value = false; }
 }
 
@@ -154,9 +174,9 @@ async function checkAvailability(){
   }
   checking.value = true;
   try {
-    const res = await canViewReport(blockIndex.value);
-    canView.value = !!res.ready || (res as any).available === true;
-    if(canView.value){ await fetchReport(); }
+  const res = await canViewReport(blockIndex.value);
+  canView.value = !!(res?.available ?? res?.ready);
+  if(canView.value){ await fetchReport(); }
   } catch(e){ canView.value = false; } finally { checking.value=false; }
 }
 

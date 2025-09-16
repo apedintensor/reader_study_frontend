@@ -76,9 +76,16 @@ export async function getActiveGame() {
   return data;
 }
 
-export async function canViewReport(block: number) {
+export interface CanViewReportResponse {
+  ready?: boolean;                 // legacy name
+  available?: boolean;             // preferred flag
+  reason?: string;                 // e.g., 'block_incomplete', 'block_not_found'
+  remaining_cases?: number;        // if incomplete, how many POSTs left
+}
+
+export async function canViewReport(block: number): Promise<CanViewReportResponse> {
   const { data } = await apiClient.get(`/api/game/can_view_report/${block}`);
-  return data as { ready: boolean };
+  return data as CanViewReportResponse;
 }
 
 export async function getLatestReport() {

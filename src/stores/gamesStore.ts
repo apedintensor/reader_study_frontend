@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { getGames, getGame, createNextGame, getGameAssignments, getActiveGame, gameNext, type GameSummary, type Assignment, type GameNextResponse } from '../api/games';
+import { getGames, getGame, createNextGame, getGameAssignments, getActiveGame, gameNext, canViewReport, type GameSummary, type Assignment, type GameNextResponse } from '../api/games';
 
 export const useGamesStore = defineStore('games', () => {
   const games = ref<GameSummary[]>([]);
@@ -48,6 +48,12 @@ export const useGamesStore = defineStore('games', () => {
     if (!opts.force && games.value.some(g => g.block_index === block)) return; // cached
     loadingGames.value = true;
     try {
+      // Safe check: if backend says report not available, skip fetch to avoid 404 noise
+      try {
+        const can = await canViewReport(block);
+        const ok = !!(can?.available ?? can?.ready);
+        if (!ok) { return null; }
+      } catch { /* ignore can_view_report errors and attempt getGame as fallback */ }
       const summary = await getGame(block);
       upsertGame(summary);
     } catch (e: any) {

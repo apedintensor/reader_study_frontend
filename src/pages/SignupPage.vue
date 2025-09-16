@@ -85,6 +85,21 @@
                 />
               </div>
 
+              <!-- Gender Field -->
+              <div class="col-12 md:col-6">
+                <label for="gender" class="field-label with-icon"><i class="pi pi-users" /> Gender</label>
+                <Dropdown 
+                  id="gender"
+                  v-model="formData.gender"
+                  :options="genderOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="w-full"
+                  placeholder="Select gender"
+                  :required="true"
+                />
+              </div>
+
               <div class="col-12 md:col-6">
                 <label for="role" class="field-label with-icon"><i class="pi pi-id-card" /> Professional Role</label>
                 <Dropdown 
@@ -191,7 +206,8 @@ const formData = reactive({
   years_experience: null as number | null,
   years_derm_experience: null as number | null,
   role_id: null as number | null,
-  country_code: null as string | null
+  country_code: null as string | null,
+  gender: null as string | null,
 });
 
 const loading = ref(false);
@@ -200,6 +216,13 @@ const roles = ref<Role[]>([]); // To store fetched roles
 const countriesLoading = ref(false);
 interface Country { code: string; name: string; }
 const countries = ref<Country[]>([]);
+
+// Gender options — restricted per backend: Male, Female, Other
+const genderOptions = [
+  { label: 'Male', value: 'Male' },
+  { label: 'Female', value: 'Female' },
+  { label: 'Other', value: 'Other' }
+];
 
 // (gender field removed)
 
@@ -273,7 +296,7 @@ const handleSignup = async () => {
   loading.value = true;
   try {
     // Ensure required fields are not null before sending
-    const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code } = formData;
+    const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code, gender } = formData;
     const payload = {
       email,
       password,
@@ -282,6 +305,7 @@ const handleSignup = async () => {
       years_derm_experience,
       role_id,
       country_code,
+      gender,
       // FastAPI Users expects these defaults, but we provide them
       is_active: true,
       is_superuser: false,

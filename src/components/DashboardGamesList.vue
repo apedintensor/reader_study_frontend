@@ -33,11 +33,6 @@
                 <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.top1_accuracy_pre) }} → {{ pct(g.top1_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top1)]">({{ deltaDisplay(g.delta_top1) }})</span></span></div>
                 <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.top3_accuracy_pre) }} → {{ pct(g.top3_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top3)]">({{ deltaDisplay(g.delta_top3) }})</span></span></div>
               </div>
-              <div class="acc-group u-surface-overlay">
-                <div class="group-title u-heading-sub">Peer Accuracy</div>
-                <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.peer_percentile_top1) }}</span></div>
-                <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.peer_percentile_top3) }}</span></div>
-              </div>
             </div>
             <!-- Removed per-game progress bar for a cleaner, more compact card -->
           </div>
@@ -69,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
@@ -189,6 +184,14 @@ function toggleDetails(block:number){
 function viewReport(block:number){ router.push(`/game/report/${block}`); }
 
 // No summary polling needed; report fetched on demand.
+
+onUnmounted(()=>{
+  // Clear any active pollers on component teardown
+  Object.keys(reportState.value).forEach(k=>{
+    const st = reportState.value[Number(k)];
+    if(st?.poller){ clearInterval(st.poller); delete st.poller; }
+  });
+});
 </script>
 
 <style scoped>

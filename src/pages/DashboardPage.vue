@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
 import { useCaseStore } from '../stores/caseStore';
@@ -220,24 +220,46 @@ onMounted(async () => {
     return;
   }
   loading.value = true;
-  // Force refresh game summaries every time dashboard mounts so newly finished/created games appear without manual reload.
-  gamesStore.loadAllGames(true).catch(err => console.warn('Failed to load game summaries', err));
+  // Load existing game summaries (no force); avoids repeated /game/reports when already cached
+  gamesStore.loadAllGames().catch(err => console.warn('Failed to load game summaries', err));
   await loadAndDisplayProgress();
 });
 
 // If user navigates away and back (e.g., via header click) reuse component instance? In some layouts keep-alive may cache.
 // Provide a lightweight interval revalidation while dashboard is active to ensure new summaries appear shortly after finishing a game.
 let revalHandle: any = null;
+let revalAttempts = 0;
 onMounted(()=>{
   if(revalHandle) clearInterval(revalHandle);
-  revalHandle = setInterval(()=>{
-    // Only poll while there are incomplete blocks that might finish and produce summaries
-    const hasIncomplete = Object.values(gamesStore.assignmentsByBlock).some(list => list.some(a=>!a.completed_post_at));
-    if(!hasIncomplete){
-      clearInterval(revalHandle); revalHandle=null; return;
+  revalHandle = setInterval(async ()=>{
+  // Skip if tab is not visible to reduce unnecessary network calls
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    // Identify blocks that are fully completed but have no hydrated summary yet
+    const doneBlocks = Object.entries(gamesStore.assignmentsByBlock)
+      .map(([k, v]) => ({ block: Number(k), list: v as any[] }))
+      .filter(({ list }) => Array.isArray(list) && list.length > 0 && list.every(a => a.completed_post_at));
+    const missing = doneBlocks.filter(({ block }) => {
+      const s = gamesStore.games.find(g => g.block_index === block);
+      return !s || (s.top1_accuracy_post == null && s.top1_accuracy_pre == null);
+    });
+    if (!missing.length) {
+      // Up-to-date: stop polling
+      clearInterval(revalHandle); revalHandle = null; return;
     }
-    gamesStore.loadAllGames(true).catch(()=>{});
+    // Limit attempts so we don't poll forever if backend delays; ~2 minutes at 8s interval
+    revalAttempts += 1;
+    // Fetch only the specific missing summaries (gamesStore.loadGame uses can_view_report guard)
+    await Promise.all(missing.map(m => gamesStore.loadGame(m.block, { force: true }))).catch(()=>{});
+    if(revalAttempts >= 15){ clearInterval(revalHandle); revalHandle=null; }
   }, 8000); // every 8s until all blocks complete
+});
+
+// Prevent background polling when leaving the Dashboard
+onUnmounted(()=>{
+  if(revalHandle){
+    clearInterval(revalHandle);
+    revalHandle = null;
+  }
 });
 
 // Add watch for assessment updates

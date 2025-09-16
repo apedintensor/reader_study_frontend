@@ -5,8 +5,8 @@ describe('computeWasUpdated', () => {
   const basePre = buildComparableSubset({
     diagnostic_confidence: 3,
     management_confidence: 4,
-    biopsy_recommended: false,
-    referral_recommended: true,
+  investigation_plan: 'biopsy',
+  next_step: 'refer',
     diagnoses: [
       { rank: 1, diagnosis_id: 11 },
       { rank: 2, diagnosis_id: 22 },
@@ -17,8 +17,8 @@ describe('computeWasUpdated', () => {
     const post = buildComparableSubset({
       diagnostic_confidence: 3,
       management_confidence: 4,
-      biopsy_recommended: false,
-      referral_recommended: true,
+  investigation_plan: 'biopsy',
+  next_step: 'refer',
       diagnoses: [
         { rank: 1, diagnosis_id: 11 },
         { rank: 2, diagnosis_id: 22 },
@@ -31,8 +31,8 @@ describe('computeWasUpdated', () => {
     const post = buildComparableSubset({
       diagnostic_confidence: 4,
       management_confidence: 4,
-      biopsy_recommended: false,
-      referral_recommended: true,
+  investigation_plan: 'biopsy',
+  next_step: 'refer',
       diagnoses: [
         { rank: 1, diagnosis_id: 11 },
         { rank: 2, diagnosis_id: 22 },
@@ -45,8 +45,8 @@ describe('computeWasUpdated', () => {
     const post = buildComparableSubset({
       diagnostic_confidence: 3,
       management_confidence: 4,
-      biopsy_recommended: false,
-      referral_recommended: true,
+  investigation_plan: 'biopsy',
+  next_step: 'refer',
       diagnoses: [
         { rank: 1, diagnosis_id: 99 },
         { rank: 2, diagnosis_id: 22 },
@@ -59,8 +59,8 @@ describe('computeWasUpdated', () => {
     const post = buildComparableSubset({
       diagnostic_confidence: 3,
       management_confidence: 4,
-      biopsy_recommended: false,
-      referral_recommended: true,
+  investigation_plan: 'biopsy',
+  next_step: 'refer',
       diagnoses: [
         { rank: 1, diagnosis_id: 11 },
         // rank2 removed

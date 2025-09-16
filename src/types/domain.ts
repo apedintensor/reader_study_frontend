@@ -87,8 +87,8 @@ export interface AssessmentNew {
   phase: AssessmentPhase;
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  biopsy_recommended?: boolean | null;
-  referral_recommended?: boolean | null;
+  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
+  next_step?: 'reassure' | 'manage' | 'refer' | null;
   changed_primary_diagnosis?: boolean | null;
   changed_management_plan?: boolean | null;
   ai_usefulness?: string | null;
@@ -123,8 +123,8 @@ export interface AssessmentCreatePayload {
   phase: AssessmentPhase;
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  biopsy_recommended?: boolean | null;
-  referral_recommended?: boolean | null;
+  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
+  next_step?: 'reassure' | 'manage' | 'refer' | null;
   changed_primary_diagnosis?: boolean | null; // POST only
   changed_management_plan?: boolean | null;   // POST only
   ai_usefulness?: string | null;              // POST only
@@ -187,7 +187,7 @@ export interface LegacyDiagnosisCreatePayload {
 export interface PrePostComparableSubset {
   diagnostic_confidence?: number;
   management_confidence?: number;
-  biopsy_recommended?: boolean;
-  referral_recommended?: boolean;
+  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
+  next_step?: 'reassure' | 'manage' | 'refer' | null;
   diagnoses: Array<{ rank: number; diagnosis_id?: number; raw_text?: string }>; // raw_text for future replacement
 }

@@ -8,8 +8,8 @@ export function computeWasUpdated(pre: PrePostComparableSubset, post: PrePostCom
   const fieldKeys: (keyof PrePostComparableSubset)[] = [
     'diagnostic_confidence',
     'management_confidence',
-    'biopsy_recommended',
-    'referral_recommended',
+  'investigation_plan',
+  'next_step',
   ];
 
   for (const key of fieldKeys) {
@@ -35,15 +35,15 @@ export function computeWasUpdated(pre: PrePostComparableSubset, post: PrePostCom
 export function buildComparableSubset(args: {
   diagnostic_confidence?: number;
   management_confidence?: number;
-  biopsy_recommended?: boolean;
-  referral_recommended?: boolean;
+  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
+  next_step?: 'reassure' | 'manage' | 'refer' | null;
   diagnoses: Array<{ rank: number; diagnosis_id?: number; raw_text?: string } | undefined | null>;
 }): PrePostComparableSubset {
   return {
     diagnostic_confidence: args.diagnostic_confidence,
     management_confidence: args.management_confidence,
-    biopsy_recommended: args.biopsy_recommended,
-    referral_recommended: args.referral_recommended,
+    investigation_plan: args.investigation_plan ?? null,
+    next_step: args.next_step ?? null,
     diagnoses: args.diagnoses.filter(Boolean).map(d => ({
       rank: (d as any).rank,
       diagnosis_id: (d as any).diagnosis_id,
