@@ -185,7 +185,7 @@ const blockProgress = computed(() => {
 watch(currentBlockIndex, async (block) => {
   if (block != null) {
     try {
-  await gamesStore.loadAssignments(block, { force: true, verbose: true });
+  await gamesStore.loadAssignments(block, { force: true, verbose: false });
     } catch (_) { /* non-fatal */ }
   }
 }, { immediate: false });
@@ -473,7 +473,7 @@ onMounted(async () => {
   await gamesStore.hydrateActiveGame();
   // After hydrating, force-load assignments for the current block so progress totals are accurate
   if (currentBlockIndex.value != null) {
-    try { await gamesStore.loadAssignments(currentBlockIndex.value, { force: true, verbose: true }); } catch(_) {}
+    try { await gamesStore.loadAssignments(currentBlockIndex.value, { force: true, verbose: false }); } catch(_) {}
   }
   // Determine if this case was the final remaining based on activeRemaining (set when navigated via advanceToNext)
   if ((gamesStore as any).activeRemaining === 1) {

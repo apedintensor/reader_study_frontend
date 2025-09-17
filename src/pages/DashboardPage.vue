@@ -220,6 +220,8 @@ onMounted(async () => {
     return;
   }
   loading.value = true;
+  // Hydrate any active in-progress game so Resume/Start status is correct after refresh
+  gamesStore.hydrateActiveGame().catch(() => {});
   // Load existing game summaries (no force); avoids repeated /game/reports when already cached
   gamesStore.loadAllGames().catch(err => console.warn('Failed to load game summaries', err));
   await loadAndDisplayProgress();

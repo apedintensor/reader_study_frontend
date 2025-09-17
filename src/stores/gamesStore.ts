@@ -37,7 +37,11 @@ export const useGamesStore = defineStore('games', () => {
     loadingGames.value = true;
     try {
       const list = await getGames();
-      games.value = list.sort((a,b)=>a.block_index - b.block_index);
+      // Merge: keep existing placeholders (e.g., active in-progress) and let fetched reports override
+      const byIndex = new Map<number, GameSummary>();
+      for (const g of games.value) byIndex.set(g.block_index, g);
+      for (const g of list) byIndex.set(g.block_index, g);
+      games.value = Array.from(byIndex.values()).sort((a,b)=>a.block_index - b.block_index);
     } finally {
       loadingGames.value = false;
     }
@@ -146,7 +150,7 @@ export const useGamesStore = defineStore('games', () => {
     if (!opts.force && assignmentsByBlock.value[block]) return; // cached
     loadingAssignments.value = true;
     try {
-      const list = await getGameAssignments(block, !!opts.verbose);
+  const list = await getGameAssignments(block, false);
       setAssignments(block, list);
   blockSizes.value[block] = Math.max(blockSizes.value[block] ?? 0, list.length);
       // After loading assignments, attempt summary refresh if block possibly already done
@@ -198,8 +202,9 @@ export const useGamesStore = defineStore('games', () => {
         const block = active.block_index ?? active.assignments[0].block_index;
         setAssignments(block, active.assignments as Assignment[]);
     blockSizes.value[block] = Math.max(blockSizes.value[block] ?? 0, (active.assignments as Assignment[]).length);
+        // Always ensure a placeholder summary exists for the active block so the card persists
         if (!games.value.some(g => g.block_index === block)) {
-          upsertGame({ block_index: block }); // placeholder summary
+          upsertGame({ block_index: block });
         }
       }
     } catch (e) {

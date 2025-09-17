@@ -64,10 +64,23 @@ export async function createNextGame(_size = 10, _human_ai_probability = 0.5): P
 }
 
 // Fetch assignments for a given block index (verbose flag may request expanded fields)
-export async function getGameAssignments(block: number, verbose = false): Promise<Assignment[]> {
-  const qs = verbose ? '?verbose=true' : '';
-  const { data } = await apiClient.get<Assignment[]>(`/api/game/report/${block}${qs}`);
-  return data as any; // backend expected to return assignments when verbose
+export async function getGameAssignments(block: number, _verbose = false): Promise<Assignment[]> {
+  // There is no dedicated endpoint to fetch assignments for an arbitrary block.
+  // Use /api/game/active and return assignments only when it matches the requested block.
+  try {
+    const active: any = await getActiveGame();
+    if (
+      active &&
+      typeof active.block_index === 'number' &&
+      active.block_index === block &&
+      Array.isArray(active.assignments)
+    ) {
+      return active.assignments as Assignment[];
+    }
+  } catch (_) {
+    // ignore errors; return empty to avoid throwing in UI
+  }
+  return [];
 }
 
 // Convenience: active game state (current in-progress block + assignments)

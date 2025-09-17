@@ -26,7 +26,14 @@
             </div>
           </div>
           <div class="summary mt-2">
-            <div v-if="g.top1_accuracy_pre == null && g.top1_accuracy_post == null" class="text-xs text-500">Summary pending...</div>
+            <div v-if="g.top1_accuracy_pre == null && g.top1_accuracy_post == null" class="text-xs text-500">
+              <template v-if="assignmentsByBlock[g.block_index] && assignmentsByBlock[g.block_index].some(a=>!a.completed_post_at)">
+                In progress...
+              </template>
+              <template v-else>
+                Summary pending...
+              </template>
+            </div>
             <div v-else class="metrics flex flex-wrap gap-4 text-sm">
               <div class="acc-group u-surface-overlay">
                 <div class="group-title u-heading-sub">Your Accuracy</div>
@@ -71,7 +78,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { useGamesStore } from '../stores/gamesStore';
 import { useToast } from 'primevue/usetoast';
-import { getGame } from '../api/games';
+import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from './GameReportCaseTable.vue';
 
@@ -80,6 +87,8 @@ const toast = useToast();
 const router = useRouter();
 
 const games = computed(()=>gamesStore.games);
+// expose assignments map for quick status checks
+const assignmentsByBlock = computed(()=> gamesStore.assignmentsByBlock);
 // Diagnosis terms cache
 const termMap = ref<Record<number,string>>({});
 const termsLoaded = ref(false);
@@ -92,7 +101,7 @@ async function ensureTerms(){
     termMap.value = map; termsLoaded.value = true;
   } catch(e){ /* silent fail; ids will show */ }
 }
-onMounted(()=>{ ensureTerms(); });
+onMounted(()=>{ ensureTerms(); gamesStore.hydrateActiveGame().catch(()=>{}); });
 // Display newest / largest block first (descending order)
 const gamesSorted = computed(()=>[...games.value].sort((a,b)=> (b.block_index ?? 0) - (a.block_index ?? 0)));
 const advancing = ref(false);
@@ -153,6 +162,16 @@ async function loadReport(block:number){
   if(existing?.loading || existing?.data) return;
   reportState.value[block] = { loading:true, data:null, attempts: (existing?.attempts||0) };
   try {
+    // Avoid 404 churn: check availability before fetching
+    try {
+      const can: CanViewReportResponse = await canViewReport(block);
+      const ok = !!(can?.available ?? can?.ready);
+      if (!ok) {
+        // If block is incomplete, mark not ready and return (poller may continue)
+        reportState.value[block] = { loading:false, data:null, attempts: existing?.attempts||0 };
+        return;
+      }
+    } catch(_) { /* on can_view error, fall through to getGame attempt */ }
     const data:any = await getGame(block);
     reportState.value[block] = { loading:false, data, attempts: existing?.attempts||0 };
     clearPoller(block);
