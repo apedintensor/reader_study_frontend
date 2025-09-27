@@ -607,8 +607,14 @@ const handlePostAiSubmit = async () => {
   toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Primary diagnosis required.', life: 3000 });
     return;
   }
-  if (postAiFormData.changeDiagnosis === null || postAiFormData.changeManagement === null || postAiFormData.aiUsefulness === null) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please answer the questions about AI impact.', life: 3000 });
+  // Validate required POST fields individually to provide accurate feedback
+  const missing: string[] = [];
+  if (postAiFormData.changeDiagnosis === null) missing.push('Did AI suggestions change your primary diagnosis?');
+  if (postAiFormData.changeManagement === null) missing.push('Did AI suggestions change your management plan?');
+  if (postAiFormData.aiUsefulness === null) missing.push('How useful were the AI suggestions?');
+  if (missing.length) {
+    const detail = missing.length === 1 ? missing[0] : `Please complete: ${missing.join('; ')}`;
+    toast.add({ severity: 'warn', summary: 'Validation Error', detail, life: 4000 });
     return;
   }
   if (!postAiFormData.investigationPlan || !postAiFormData.nextStep) {

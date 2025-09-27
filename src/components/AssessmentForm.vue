@@ -18,6 +18,7 @@
                           optionValue="value"
                           class="w-full md:w-auto"
                           :aria-labelledby="'changeDiagnosis-label'"
+                          :allowEmpty="false"
                           :class="{'p-invalid': submitted && formData.changeDiagnosis === null}"
                           required
                           v-tooltip.bottom="changeDiagnosisTooltipText" />
@@ -76,6 +77,7 @@
                           optionValue="value"
                           class="w-full md:w-auto"
                           :aria-labelledby="'changeManagement-label'"
+                          :allowEmpty="false"
                           :class="{'p-invalid': submitted && formData.changeManagement === null}"
                           required
                           v-tooltip.bottom="changeManagementTooltipText" />
