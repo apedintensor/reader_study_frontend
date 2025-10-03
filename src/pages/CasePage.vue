@@ -805,6 +805,10 @@ function handleBlockContinue() {
   <div v-if="!isPostAiPhase" class="preai-help-note mb-3">
     Start with your own assessment: enter your Top 1–3 diagnoses (Rank 1 required), choose your Investigation and Next Step, and set confidence and certainty. You'll see AI suggestions afterwards.
   </div>
+  <!-- Post-AI quick guidance -->
+  <div v-if="isPostAiPhase" class="postai-help-note mb-3">
+    Review the AI suggestions. If they changed your judgement, update your Diagnosis and Management Choices accordingly, rate AI usefulness, and then submit to complete this case.
+  </div>
   <AssessmentForm
           :formData="currentFormData"
           :diagnosisTerms="diagnosisTerms"
@@ -869,6 +873,17 @@ function handleBlockContinue() {
 
 /* Subtle info banner for Pre-AI phase */
 .preai-help-note {
+  padding: 0.75rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent-primary, #6366f1);
+  background: var(--highlight-bg, rgba(99,102,241,0.08));
+  color: var(--text-color, #374151);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Post-AI guidance banner */
+.postai-help-note {
   padding: 0.75rem 0.875rem;
   border-radius: 8px;
   border: 1px solid var(--accent-primary, #6366f1);
