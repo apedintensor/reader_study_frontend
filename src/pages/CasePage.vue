@@ -97,6 +97,7 @@ const gameStore = useGameStore();
 const gamesStore = useGamesStore();
 
 const caseId = computed(() => parseInt(route.params.id as string, 10));
+const demoMode = computed(() => route.query.demo === '1' || route.query.demo === 'true');
 const userId = computed(() => userStore.user?.id);
 const submitted = ref(false);
 
@@ -527,6 +528,12 @@ const handlePreAiSubmit = async () => {
 
   submitting.value = true;
   try {
+    if (demoMode.value) {
+      // Simulate pre submit without saving
+      await caseStore.markProgress(caseId.value, false);
+      toast.add({ severity: 'success', summary: 'Demo', detail: 'Pre-AI step recorded (demo). Proceed to AI suggestions.', life: 2000 });
+      return; // phase watcher will refetch as needed
+    }
     // Find assignment for this user+case in any loaded block
     const assignment = Object.values(gamesStore.assignmentsByBlock || {})
       .flat()
@@ -624,6 +631,14 @@ const handlePostAiSubmit = async () => {
 
   submitting.value = true;
   try {
+    if (demoMode.value) {
+      // Simulate post submit without saving and go to demo completion
+      await caseStore.markProgress(caseId.value, true);
+      resetFormData();
+      toast.add({ severity: 'success', summary: 'Demo', detail: 'Demo completed! Redirecting…', life: 1500 });
+      router.push('/demo-complete');
+      return;
+    }
     const assignment = Object.values(gamesStore.assignmentsByBlock || {})
       .flat()
       .find((a: any) => a.case_id === caseId.value && a.user_id === userId.value);
@@ -892,4 +907,5 @@ function handleBlockContinue() {
   font-size: 0.875rem;
   line-height: 1.4;
 }
+
 </style>

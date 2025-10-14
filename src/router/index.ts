@@ -6,6 +6,7 @@ import SignupPage from '../pages/SignupPage.vue';
 import CasePage from '../pages/CasePage.vue';
 import ReviewPage from '../pages/ReviewPage.vue';
 import GameReportPage from '../pages/GameReportPage.vue';
+import DemoCompletePage from '../pages/DemoCompletePage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -41,6 +42,12 @@ const router = createRouter({
       path: '/game/report/:block',
       name: 'game-report',
       component: GameReportPage,
+      meta: { requiresAuth: true }
+    }
+    ,{
+      path: '/demo-complete',
+      name: 'demo-complete',
+      component: DemoCompletePage,
       meta: { requiresAuth: true }
     }
   ]

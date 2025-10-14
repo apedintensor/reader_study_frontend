@@ -22,6 +22,7 @@ export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null);
   // Use 'access_token' consistent with LoginPage and apiClient interceptor
   const token = ref<string | null>(localStorage.getItem('access_token'));
+  const isNewUser = ref<boolean>(false);
 
   // Actions
   function setToken(newToken: string) {
@@ -35,6 +36,8 @@ export const useUserStore = defineStore('user', () => {
     token.value = null;
     localStorage.removeItem('userData');
     localStorage.removeItem('access_token');
+    localStorage.removeItem('gamesReportsCached');
+    isNewUser.value = false;
     delete apiClient.defaults.headers.common['Authorization'];
   }
 
@@ -50,6 +53,9 @@ export const useUserStore = defineStore('user', () => {
       user.value = response.data;
       localStorage.setItem('userData', JSON.stringify(user.value));
       console.log("Current user fetched:", user.value);
+  // Lightweight new user heuristic: if no cached games list yet, mark new until dashboard loads
+  const cachedReports = localStorage.getItem('gamesReportsCached');
+  isNewUser.value = !cachedReports;
       return true;
     } catch (error: any) {
       console.error('Failed to fetch current user:', error);
@@ -65,6 +71,11 @@ export const useUserStore = defineStore('user', () => {
     clearAuth();
     // Optionally add router.push('/login') here if router is accessible
     console.log("User logged out.");
+  }
+
+  function markHasGameHistory() {
+    isNewUser.value = false;
+    localStorage.setItem('gamesReportsCached', '1');
   }
 
   function loadFromLocalStorage() {
@@ -103,8 +114,10 @@ export const useUserStore = defineStore('user', () => {
     user,
     token,
     isAuthenticated, // Expose computed property
+    isNewUser,
     setToken,
     logout,
+    markHasGameHistory,
     fetchCurrentUser,
     loadFromLocalStorage, // Keep if external loading is needed
     clearAuth, // Expose clearAuth

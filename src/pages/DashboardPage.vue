@@ -4,8 +4,26 @@
     
     <!-- Progress Overview -->
     <div class="grid">
+      <div v-if="userStore.isNewUser" class="col-12 order-0">
+        <Card class="mb-4 onboarding-card">
+          <template #title>
+            <div class="flex align-items-center gap-2">
+              <i class="pi pi-compass text-primary"></i>
+              <span class="text-lg font-medium">Warm-up steps before your first game</span>
+            </div>
+          </template>
+          <template #content>
+            <ol class="onboarding-steps">
+              <li><strong>Start the demo.</strong> Use the <em>Start Demo</em> button below to walk through a practice case.</li>
+              <li><strong>Complete both assessments.</strong> Fill out the Pre-AI and Post-AI forms so you can see how the AI guidance feels end to end.</li>
+              <li><strong>Start a real game.</strong> When you are ready, choose <em>Start Game</em> on the completion screen to begin your first 10-case block.</li>
+            </ol>
+            <p class="text-sm text-600 mt-3">You can repeat the warm-up any time. Your official progress begins once you launch a real game block.</p>
+          </template>
+        </Card>
+      </div>
       <!-- Stats Summary (moved to top) -->
-      <div class="col-12 order-0">
+      <div class="col-12" :class="{'order-1': userStore.isNewUser, 'order-0': !userStore.isNewUser}">
         <Card class="mb-4">
           <template #title>
             <div class="flex align-items-center">
@@ -221,9 +239,11 @@ onMounted(async () => {
   }
   loading.value = true;
   // Hydrate any active in-progress game so Resume/Start status is correct after refresh
-  gamesStore.hydrateActiveGame().catch(() => {});
-  // Load existing game summaries (no force); avoids repeated /game/reports when already cached
-  gamesStore.loadAllGames().catch(err => console.warn('Failed to load game summaries', err));
+  if (!userStore.isNewUser) {
+    gamesStore.hydrateActiveGame().catch(() => {});
+    // Load existing game summaries (no force); avoids repeated /game/reports when already cached
+    gamesStore.loadAllGames().catch(err => console.warn('Failed to load game summaries', err));
+  }
   await loadAndDisplayProgress();
 });
 
@@ -269,6 +289,13 @@ watch(() => caseStore.caseProgress, () => {
   // This will trigger reactivity when assessment status changes
 }, { deep: true });
 
+watch(() => userStore.isNewUser, (val) => {
+  if (!val) {
+    gamesStore.hydrateActiveGame().catch(() => {});
+    gamesStore.loadAllGames(true).catch(err => console.warn('Failed to load game summaries', err));
+  }
+});
+
 // navigateToCase removed
 
 // getStatusSeverity removed
@@ -293,6 +320,28 @@ watch(() => caseStore.caseProgress, () => {
 :deep(.p-card) {
   background: var(--surface-card);
   border-radius: var(--border-radius);
+}
+
+.onboarding-card {
+  background: var(--highlight-bg, rgba(56, 189, 248, 0.08));
+  border: 1px solid var(--surface-border);
+}
+
+.onboarding-steps {
+  margin: 0;
+  padding-left: 1.35rem;
+  line-height: 1.6;
+  color: var(--text-color);
+}
+
+.onboarding-steps li {
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-steps em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--primary-color);
 }
 
 :deep(.p-progressbar) { background: var(--bg-surface-ground); }

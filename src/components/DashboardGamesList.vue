@@ -13,7 +13,7 @@
       </div>
     </template>
     <template #content>
-  <div v-if="!games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">No games yet. Start your first game.</div>
+  <div v-if="!gamesSorted.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">No games yet. Start your first game.</div>
       <div class="blocks-list flex flex-column gap-3">
   <div v-for="g in gamesSorted" :key="g.block_index" class="block-row u-surface-overlay u-card-pad border-round u-elev-1">
           <div class="row-head flex justify-content-between align-items-center">
@@ -71,18 +71,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { useGamesStore } from '../stores/gamesStore';
+import { useUserStore } from '../stores/userStore';
+import { useCaseStore } from '../stores/caseStore';
 import { useToast } from 'primevue/usetoast';
 import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from './GameReportCaseTable.vue';
 
 const gamesStore = useGamesStore();
+const userStore = useUserStore();
+const caseStore = useCaseStore();
 const toast = useToast();
 const router = useRouter();
 
@@ -101,12 +105,19 @@ async function ensureTerms(){
     termMap.value = map; termsLoaded.value = true;
   } catch(e){ /* silent fail; ids will show */ }
 }
-onMounted(()=>{ ensureTerms(); gamesStore.hydrateActiveGame().catch(()=>{}); });
-// Display newest / largest block first (descending order)
-const gamesSorted = computed(()=>[...games.value].sort((a,b)=> (b.block_index ?? 0) - (a.block_index ?? 0)));
+onMounted(()=>{
+  ensureTerms();
+  if (!userStore.isNewUser) {
+    gamesStore.hydrateActiveGame().catch(()=>{});
+    gamesStore.loadAllGames().catch(()=>{});
+  }
+});
+// If user is still new, suppress game cards entirely until they start a real block
+const gamesSorted = computed(()=> userStore.isNewUser ? [] : [...games.value].sort((a,b)=> (b.block_index ?? 0) - (a.block_index ?? 0)));
 const advancing = ref(false);
 // Identify an in-progress (incomplete) block (has assignments & some not finished)
 const incompleteBlockIndex = computed(()=>{
+  if (userStore.isNewUser) return null;
   const map:any = gamesStore.assignmentsByBlock || {};
   const keys = Object.keys(map).map(k=>Number(k)).sort((a,b)=>a-b);
   for(const k of keys){
@@ -117,7 +128,8 @@ const incompleteBlockIndex = computed(()=>{
 });
 const incompleteBlockExists = computed(()=> incompleteBlockIndex.value != null);
 const nextActionLabel = computed(()=>{
-  if(incompleteBlockIndex.value != null) return 'Resume';
+  if (userStore.isNewUser) return 'Start Demo';
+  if (incompleteBlockIndex.value != null) return 'Resume';
   return 'Start';
 });
 const allExhausted = computed(()=>gamesStore.activeStatus === 'exhausted');
@@ -133,6 +145,18 @@ function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return '
 async function onAdvance(){
   if(advancing.value) return; advancing.value = true;
   try {
+    // New user demo flow: route to a random case in demo mode without saving
+    if (userStore.isNewUser) {
+      if (!caseStore.cases.length) {
+        await caseStore.loadCases();
+      }
+      const pool = caseStore.cases;
+      if (pool && pool.length) {
+        const rand = pool[Math.floor(Math.random() * pool.length)];
+        router.push({ path: `/case/${rand.id}`, query: { demo: '1' } });
+        return;
+      }
+    }
     const r = await gamesStore.advanceToNext();
     if(r.status === 'exhausted') {
       toast.add({ severity:'success', summary:'Completed', detail:'All cases finished. Great job!', life:5000 });
@@ -210,6 +234,13 @@ onUnmounted(()=>{
     const st = reportState.value[Number(k)];
     if(st?.poller){ clearInterval(st.poller); delete st.poller; }
   });
+});
+
+watch(() => userStore.isNewUser, (val) => {
+  if (!val) {
+    gamesStore.hydrateActiveGame().catch(()=>{});
+    gamesStore.loadAllGames(true).catch(()=>{});
+  }
 });
 </script>
 

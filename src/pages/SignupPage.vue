@@ -44,7 +44,7 @@
                 </div>
               </div>
 
-              <!-- Age Field (captured locally; backend uses age_bracket only) -->
+              <!-- Age Field (send raw age string via age_bracket field on backend) -->
               <div class="col-12 md:col-6">
                 <label for="age" class="field-label with-icon"><i class="pi pi-user" /> Age</label>
                 <InputNumber
@@ -201,8 +201,7 @@ const toast = useToast();
 const formData = reactive({
   email: '',
   password: '',
-  age_bracket: null as string | null,
-  age: null as number | null, // raw age captured from user (not sent directly to backend)
+  age: null as number | null,
   years_experience: null as number | null,
   years_derm_experience: null as number | null,
   role_id: null as number | null,
@@ -296,11 +295,12 @@ const handleSignup = async () => {
   loading.value = true;
   try {
     // Ensure required fields are not null before sending
-    const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code, gender } = formData;
+    const { email, password, years_experience, years_derm_experience, role_id, country_code, gender } = formData;
+    const normalizedAge = formData.age != null ? String(formData.age) : null;
     const payload = {
       email,
       password,
-      age_bracket,
+      age_bracket: normalizedAge,
       years_experience,
       years_derm_experience,
       role_id,

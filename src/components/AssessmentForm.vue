@@ -111,6 +111,7 @@
                             class="w-full"
                             :aria-labelledby="'confidence-label'"
                             v-tooltip.bottom="getConfidenceLabel(formData.confidenceScore || 0)" />
+              <small class="u-help text-600 mt-2">5 is the highest confidence.</small>
             </div>
             <div class="field col-12 md:col-6 centered-field">
               <label id="certainty-label">Certainty of Management Plan (1-5)</label>
@@ -123,6 +124,7 @@
                             class="w-full"
                             :aria-labelledby="'certainty-label'"
                             v-tooltip.bottom="getCertaintyLabel(formData.certaintyScore || 0)" />
+              <small class="u-help text-600 mt-2">5 is the highest certainty.</small>
             </div>
           </div>
         </Fieldset>

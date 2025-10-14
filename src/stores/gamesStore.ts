@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { getGames, getGame, createNextGame, getGameAssignments, getActiveGame, gameNext, canViewReport, type GameSummary, type Assignment, type GameNextResponse } from '../api/games';
+import { useUserStore } from './userStore';
 
 export const useGamesStore = defineStore('games', () => {
+  const userStore = useUserStore();
   const games = ref<GameSummary[]>([]);
   const assignmentsByBlock = ref<Record<number, Assignment[]>>({});
   const blockSizes = ref<Record<number, number>>({}); // persist known block sizes
@@ -109,6 +111,9 @@ export const useGamesStore = defineStore('games', () => {
     const resp = await gameNext();
     activeStatus.value = resp.status;
     activeRemaining.value = resp.remaining;
+    if (resp.assignment) {
+      userStore.markHasGameHistory();
+    }
     if (resp.assignment) {
       activeAssignment.value = resp.assignment;
       // ensure assignment cached in store structure
