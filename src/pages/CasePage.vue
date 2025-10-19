@@ -9,8 +9,10 @@ import { useGameStore } from '../stores/gameStore';
 import { enableBlockFeedback } from '../featureFlags';
 import BlockFeedbackPanel from '../components/BlockFeedbackPanel.vue';
 import apiClient from '../api';
+import { listAssignmentAssessments } from '../api/assessments';
+import type { Assignment } from '../api/games';
 import type { MenuItem } from 'primevue/menuitem';
-import type { InvestigationAction, InvestigationPlanChoice, NextStepAction, NextStepChoice } from '../types/domain';
+import type { AssessmentNew, InvestigationAction, InvestigationPlanChoice, NextStepAction, NextStepChoice } from '../types/domain';
 
 // Import new components
 import CaseProgressSteps from '../components/CaseProgressSteps.vue';
@@ -46,11 +48,10 @@ interface AIOutputRead {
 }
 
 // Updated to match current OpenAPI (see docs/openapi.json):
-// DiagnosisEntryCreate: { rank: int; raw_text?: string | null; diagnosis_term_id: int }
+// DiagnosisEntryCreate: { rank: int; raw_text: string }
 interface DiagnosisEntryCreateTS {
   rank: number;
-  raw_text?: string | null;
-  diagnosis_term_id: number; // required, integer
+  raw_text: string;
 }
 
 interface AssessmentCreate {
@@ -104,20 +105,11 @@ const submitted = ref(false);
 
 // --- State ---
 const images = ref<ImageRead[]>([]);
-const diagnosisTerms = ref<DiagnosisTermRead[]>([]);
 const aiOutputs = ref<AIOutputRead[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 // Track if this case was last remaining when entered
 const wasFinalInBlock = ref(false);
-// Track selected diagnosis term objects (from autocomplete select events)
-const selectedDiagnosisByRank = reactive<Record<number, { id: number; name: string; synonyms?: string[] } | null>>({ 1: null, 2: null, 3: null });
-
-function onDiagnosisSelected(payload: { rank: number; term: { id: number; name: string; synonyms?: string[] } }) {
-  selectedDiagnosisByRank[payload.rank] = payload.term;
-  console.debug('Diagnosis selected', payload.rank, payload.term);
-}
-
 const investigationActionMap: Record<InvestigationPlanChoice, InvestigationAction> = {
   none: 'NONE',
   biopsy: 'BIOPSY',
@@ -142,24 +134,13 @@ const toNextStepAction = (choice: NextStepChoice | null | undefined): NextStepAc
 
 function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreateTS[] {
   const src = phase === 'PRE' ? preAiFormData : postAiFormData;
-  const raw = [
-    { rank: 1, text: src.diagnosisRank1Text, sel: selectedDiagnosisByRank[1] },
-    { rank: 2, text: src.diagnosisRank2Text, sel: selectedDiagnosisByRank[2] },
-    { rank: 3, text: src.diagnosisRank3Text, sel: selectedDiagnosisByRank[3] }
-  ].filter(e => e.text && e.text.trim().length);
-  const mapped = raw.map(e => {
-    const lookupKey = (e.sel?.name || e.text || '').toLowerCase();
-    const fallback = diagnosisTerms.value.find(t => t.name.toLowerCase() === lookupKey);
-    // use nullish coalescing so id=0 is preserved
-    const id = (e.sel?.id ?? fallback?.id ?? null);
-    return { rank: e.rank, raw_text: e.text!.trim(), diagnosis_term_id: id as number | null };
-  });
-  console.debug('buildDiagnosisEntries mapped (pre-filter)', mapped);
-  const filtered = mapped.filter(m => Number.isInteger(m.diagnosis_term_id)) as { rank: number; raw_text: string; diagnosis_term_id: number; }[];
-  if (filtered.length !== mapped.length) {
-    console.debug('Filtered out diagnosis entries without a resolved term id', { mapped, filtered });
-  }
-  return filtered as DiagnosisEntryCreateTS[];
+  return [
+    { rank: 1, text: src.diagnosisRank1Text },
+    { rank: 2, text: src.diagnosisRank2Text },
+    { rank: 3, text: src.diagnosisRank3Text }
+  ]
+    .filter(e => typeof e.text === 'string' && e.text.trim().length > 0)
+    .map(e => ({ rank: e.rank, raw_text: e.text!.trim() }));
 }
 
 // --- Phase Detection ---
@@ -199,6 +180,15 @@ const currentBlockIndex = computed(() => {
   return null;
 });
 
+const currentAssignment = computed<Assignment | null>(() => {
+  if (!userId.value || !caseId.value) return null;
+  for (const list of Object.values(gamesStore.assignmentsByBlock || {})) {
+    const match = list?.find(a => a.case_id === caseId.value && a.user_id === userId.value);
+    if (match) return match as Assignment;
+  }
+  return null;
+});
+
 const blockProgress = computed(() => {
   if (currentBlockIndex.value == null) return null;
   return gamesStore.blockProgress(currentBlockIndex.value);
@@ -213,6 +203,49 @@ watch(currentBlockIndex, async (block) => {
     } catch (_) { /* non-fatal */ }
   }
 }, { immediate: false });
+
+const syncedAssignmentIds = new Set<number>();
+
+const syncPhaseFromExistingAssessments = async (assignment: Assignment, { force = false } = {}) => {
+  if (!assignment) return;
+  if (!force && syncedAssignmentIds.has(assignment.id)) return;
+  try {
+    const assessments = await listAssignmentAssessments(assignment.id);
+    if (!Array.isArray(assessments) || !assessments.length) {
+      syncedAssignmentIds.add(assignment.id);
+      return;
+    }
+    const progress = caseStore.caseProgress[caseId.value]
+      ? { ...caseStore.caseProgress[caseId.value] }
+      : { caseId: caseId.value, preCompleted: false, postCompleted: false };
+    let changed = false;
+    if (assessments.some((a: AssessmentNew) => a.phase === 'PRE')) {
+      if (!progress.preCompleted) changed = true;
+      progress.preCompleted = true;
+    }
+    if (assessments.some((a: AssessmentNew) => a.phase === 'POST')) {
+      if (!progress.postCompleted) changed = true;
+      progress.postCompleted = true;
+      progress.preCompleted = true;
+    }
+    if (changed) {
+      caseStore.caseProgress[caseId.value] = progress as any;
+      caseStore.saveProgressToCache();
+    }
+    syncedAssignmentIds.add(assignment.id);
+  } catch (error) {
+    console.error('Failed to sync assignment assessments for assignment', assignment.id, error);
+  }
+};
+
+watch(currentAssignment, (assignment) => {
+  if (!assignment) return;
+  syncPhaseFromExistingAssessments(assignment).catch(() => {});
+}, { immediate: true });
+
+watch(caseId, () => {
+  syncedAssignmentIds.clear();
+});
 
 // Percent with partial credit for Pre-AI: each pre-only case counts as 0.5, post counts as 1
 // Denominator hard-coded to 10 (fixed game size)
@@ -298,11 +331,10 @@ const fetchData = async () => {
   try {
     const commonFetches = [
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
-      apiClient.get<Case>(`/api/cases/${caseId.value}`),
-      apiClient.get<DiagnosisTermRead[]>('/api/diagnosis_terms/')
+      apiClient.get<Case>(`/api/cases/${caseId.value}`)
     ];
 
-    const [imagesResponse, caseResponse, termsResponse] = await Promise.all(commonFetches);
+    const [imagesResponse, caseResponse] = await Promise.all(commonFetches);
 
     images.value = imagesResponse.data as ImageRead[];
     const caseData = caseResponse.data as Case;
@@ -310,8 +342,6 @@ const fetchData = async () => {
       throw new Error('Failed to load case data');
     }
   // metadata removed
-    diagnosisTerms.value = termsResponse.data as DiagnosisTermRead[];
-
     if (isPostAiPhase.value) {
       console.log(`Fetching AI outputs for case ${caseId.value}`);
       try {
@@ -534,6 +564,20 @@ const handleSubmit = async () => {
 
 const handlePreAiSubmit = async () => {
   if (submitting.value) return; // prevent double submit
+  const progress = caseStore.caseProgress[caseId.value];
+  if (progress?.preCompleted) {
+    if (!progress.postCompleted) {
+      toast.add({ severity: 'info', summary: 'Pre-AI Already Submitted', detail: 'Loading Post-AI assessment instead.', life: 4000 });
+      if (currentAssignment.value) {
+        try {
+          await syncPhaseFromExistingAssessments(currentAssignment.value, { force: true });
+        } catch (_) {
+          /* non-fatal */
+        }
+      }
+    }
+    return;
+  }
   submitted.value = true;
   if (!userId.value || !caseId.value) {
     toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
@@ -566,20 +610,14 @@ const handlePreAiSubmit = async () => {
     }
     // Build diagnosis debug info (not yet sent to backend)
     const rawDiagnoses = [
-      { rank: 1, raw_text: preAiFormData.diagnosisRank1Text, selected: selectedDiagnosisByRank[1] },
-      { rank: 2, raw_text: preAiFormData.diagnosisRank2Text, selected: selectedDiagnosisByRank[2] },
-      { rank: 3, raw_text: preAiFormData.diagnosisRank3Text, selected: selectedDiagnosisByRank[3] }
+      { rank: 1, raw_text: preAiFormData.diagnosisRank1Text?.trim() || null },
+      { rank: 2, raw_text: preAiFormData.diagnosisRank2Text?.trim() || null },
+      { rank: 3, raw_text: preAiFormData.diagnosisRank3Text?.trim() || null }
     ].filter(d => d.raw_text);
-    const resolvedEntries = rawDiagnoses.map(d => {
-      // Attempt to resolve by exact (case-insensitive) name match among loaded diagnosisTerms
-      const match = diagnosisTerms.value.find(t => t.name.toLowerCase() === (d.selected?.name || d.raw_text || '').toLowerCase());
-      return { rank: d.rank, raw_text: d.raw_text, diagnosis_term_id: d.selected?.id || match?.id || null, selectedName: d.selected?.name || null };
-    });
     console.debug('PRE assessment diagnosis debug', {
       case_id: caseId.value,
       assignment_id: assignment.id,
-      rawDiagnoses,
-      resolvedEntries
+      rawDiagnoses
     });
     const diagnosisEntries = buildDiagnosisEntries('PRE');
     const primary = diagnosisEntries.find(e => e.rank === 1);
@@ -669,19 +707,14 @@ const handlePostAiSubmit = async () => {
       throw new Error('No assignment found for this case. Start or hydrate the game block first.');
     }
     const rawDiagnoses = [
-      { rank: 1, raw_text: postAiFormData.diagnosisRank1Text, selected: selectedDiagnosisByRank[1] },
-      { rank: 2, raw_text: postAiFormData.diagnosisRank2Text, selected: selectedDiagnosisByRank[2] },
-      { rank: 3, raw_text: postAiFormData.diagnosisRank3Text, selected: selectedDiagnosisByRank[3] }
+      { rank: 1, raw_text: postAiFormData.diagnosisRank1Text?.trim() || null },
+      { rank: 2, raw_text: postAiFormData.diagnosisRank2Text?.trim() || null },
+      { rank: 3, raw_text: postAiFormData.diagnosisRank3Text?.trim() || null }
     ].filter(d => d.raw_text);
-    const resolvedEntries = rawDiagnoses.map(d => {
-      const match = diagnosisTerms.value.find(t => t.name.toLowerCase() === (d.selected?.name || d.raw_text || '').toLowerCase());
-      return { rank: d.rank, raw_text: d.raw_text, diagnosis_term_id: d.selected?.id || match?.id || null, selectedName: d.selected?.name || null };
-    });
     console.debug('POST assessment diagnosis debug', {
       case_id: caseId.value,
       assignment_id: assignment.id,
-      rawDiagnoses,
-      resolvedEntries
+      rawDiagnoses
     });
     const diagnosisEntries = buildDiagnosisEntries('POST');
     const primary = diagnosisEntries.find(e => e.rank === 1);
@@ -849,7 +882,6 @@ function handleBlockContinue() {
   </div>
   <AssessmentForm
           :formData="currentFormData"
-          :diagnosisTerms="diagnosisTerms"
           :scoreOptions="scoreOptions"
           :submitted="submitted"
           :submitting="submitting"
@@ -858,8 +890,7 @@ function handleBlockContinue() {
           :changeOptions="changeOptions"
           :getConfidenceLabel="getConfidenceLabel"
           :getCertaintyLabel="getCertaintyLabel"
-          @submit-form="handleSubmit"
-          @select-diagnosis="onDiagnosisSelected"
+    @submit-form="handleSubmit"
         />
       </div>
     </div>

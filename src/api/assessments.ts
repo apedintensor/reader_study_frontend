@@ -1,5 +1,5 @@
 import apiClient from '.';
-import type { AssessmentNew, AssessmentCreatePayload } from '../types/domain';
+import type { AssessmentNew, AssessmentCreatePayload, DiagnosisEntryRead } from '../types/domain';
 
 // Unified assessment create/replace endpoint (backend path no longer prefixed by /api or /v1)
 export async function submitAssessment(payload: AssessmentCreatePayload) {
@@ -16,5 +16,10 @@ export async function listAssignmentAssessments(assignmentId: number) {
 // Fetch all assessments for user+block (audit/report)
 export async function listBlockAssessments(userId: number, blockIndex: number) {
   const { data } = await apiClient.get<AssessmentNew[]>(`/api/assessment/user/${userId}/block/${blockIndex}`);
+  return data;
+}
+
+export async function getDiagnosisEntries(assessmentId: number) {
+  const { data } = await apiClient.get<DiagnosisEntryRead[]>(`/api/assessment/${assessmentId}/diagnosis_entries`);
   return data;
 }

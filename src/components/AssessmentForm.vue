@@ -28,39 +28,34 @@
           <div class="grid formgrid">
             <div class="field col-12">
               <label id="diag1-label">Primary Diagnosis (Rank 1)</label>
-              <DiagnosisAutocomplete
+              <InputText
                 id="diag1"
-                v-model="diagnosisRank1Proxy"
-                :minChars="2"
-                :maxResults="8"
-                placeholder="Type to search (supports synonyms & typos)"
-                @select="term => handleSelect(term, 1)"
+                v-model.trim="diagnosisRank1Proxy"
+                placeholder="Enter your leading diagnosis"
                 :disabled="submitting"
+                class="w-full"
+                :class="{'p-invalid': submitted && !formData.diagnosisRank1Text}"
               />
               <small v-if="submitted && !formData.diagnosisRank1Text" class="p-error">Primary diagnosis required.</small>
             </div>
             <div class="field col-12 md:col-6">
               <label id="diag2-label">Differential (Rank 2, optional)</label>
-              <DiagnosisAutocomplete
+              <InputText
                 id="diag2"
-                v-model="diagnosisRank2Proxy"
-                :minChars="2"
-                :maxResults="8"
+                v-model.trim="diagnosisRank2Proxy"
                 placeholder="Optional secondary"
-                @select="term => handleSelect(term, 2)"
                 :disabled="submitting"
+                class="w-full"
               />
             </div>
             <div class="field col-12 md:col-6">
               <label id="diag3-label">Differential (Rank 3, optional)</label>
-              <DiagnosisAutocomplete
+              <InputText
                 id="diag3"
-                v-model="diagnosisRank3Proxy"
-                :minChars="2"
-                :maxResults="8"
+                v-model.trim="diagnosisRank3Proxy"
                 placeholder="Optional tertiary"
-                @select="term => handleSelect(term, 3)"
                 :disabled="submitting"
+                class="w-full"
               />
             </div>
           </div>
@@ -172,10 +167,10 @@
 import Card from 'primevue/card';
 import Fieldset from 'primevue/fieldset';
 import SelectButton from 'primevue/selectbutton';
-import DiagnosisAutocomplete from './DiagnosisAutocomplete.vue';
 import { ref, computed, watch } from 'vue';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
+import InputText from 'primevue/inputtext';
 import type { InvestigationPlanChoice, NextStepChoice } from '../types/domain';
 
 // Define tooltip texts
@@ -183,11 +178,6 @@ const changeDiagnosisTooltipText = "Indicate if the AI's suggestions led you to 
 const changeManagementTooltipText = "Indicate if the AI's suggestions led you to change your management plan.";
 
 // Interfaces for props
-interface DiagnosisTermRead {
-  name: string;
-  id: number;
-}
-
 interface FormData {
   diagnosisRank1Text: string | null;
   diagnosisRank2Text: string | null;
@@ -219,7 +209,6 @@ interface ChangeOption {
 
 const props = defineProps<{
   formData: FormData;
-  diagnosisTerms: DiagnosisTermRead[];
   scoreOptions: ScoreOption[];
   submitted: boolean;
   submitting: boolean;
@@ -230,13 +219,7 @@ const props = defineProps<{
   getCertaintyLabel: (score: number) => string;
 }>();
 
-const emit = defineEmits(['submit-form', 'select-diagnosis']);
-
-// Capture selected canonical objects for potential POST; emit upward too
-interface DiagnosisTermSuggestion { id: number; name: string; synonyms: string[] }
-const selectedRank1 = ref<DiagnosisTermSuggestion | null>(null);
-const selectedRank2 = ref<DiagnosisTermSuggestion | null>(null);
-const selectedRank3 = ref<DiagnosisTermSuggestion | null>(null);
+defineEmits(['submit-form']);
 
 // Track whether the user manually toggled the change flags (vs. auto-set by parent)
 const changeDiagnosisSelectedByUser = ref(false);
@@ -308,13 +291,6 @@ watch(() => [props.formData.investigationPlan, props.formData.nextStep], () => {
     // prompt recomputes automatically
   }
 });
-
-function handleSelect(term: DiagnosisTermSuggestion, rank: 1 | 2 | 3) {
-  if (rank === 1) selectedRank1.value = term;
-  else if (rank === 2) selectedRank2.value = term;
-  else selectedRank3.value = term;
-  emit('select-diagnosis', { rank, term });
-}
 
 function onChangeDiagnosisUserToggle() {
   changeDiagnosisSelectedByUser.value = true;

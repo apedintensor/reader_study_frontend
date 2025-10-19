@@ -10,7 +10,7 @@
         <Button label="Back" icon="pi pi-arrow-left" severity="secondary" @click="goBack" />
       </template>
     </Card>
-    <Card v-else class="mb-4">
+    <Card v-else-if="report" class="mb-4">
       <template #title>
         <div class="flex align-items-center gap-2">
           <i class="pi pi-chart-line" /> Game #{{ blockIndex + 1 }} Performance
@@ -28,27 +28,19 @@
           </div>
         </div>
         <div class="grid">
-          <div class="col-12 md:col-6">
-            <h3 class="mt-0 mb-2">Accuracy (Pre vs Post)</h3>
-            <ul class="list-none m-0 p-0 flex flex-column gap-2 text-sm">
-              <li class="flex justify-content-between"><span>Top-1</span><span>{{ pct(report.top1_accuracy_pre) }} → {{ pct(report.top1_accuracy_post) }} (<strong :class="deltaClass(report.delta_top1)">{{ deltaDisplay(report.delta_top1) }}</strong>)</span></li>
-              <li class="flex justify-content-between"><span>Top-3</span><span>{{ pct(report.top3_accuracy_pre) }} → {{ pct(report.top3_accuracy_post) }} (<strong :class="deltaClass(report.delta_top3)">{{ deltaDisplay(report.delta_top3) }}</strong>)</span></li>
-            </ul>
-          </div>
-          
           <!-- Details table (same format as dashboard list) -->
-          <div class="col-12" v-if="report?.cases && report.cases.length">
+          <div class="col-12" v-if="reportCases.length">
             <div class="font-medium mb-2 flex justify-content-between">
               <span>Game Report</span>
-              <span class="text-xs text-500">{{ report.total_cases }} cases</span>
+              <span class="text-xs text-500">{{ totalCases }} cases</span>
             </div>
-            <div class="grid text-xs mb-2">
-              <div class="col-6 md:col-3"><strong>Top1</strong> {{ pct(report.top1_accuracy_pre) }} → {{ pct(report.top1_accuracy_post) }}</div>
-              <div class="col-6 md:col-3"><strong>Top3</strong> {{ pct(report.top3_accuracy_pre) }} → {{ pct(report.top3_accuracy_post) }}</div>
-              <div class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(report.delta_top1)">{{ deltaDisplay(report.delta_top1) }}</span></div>
-              <div class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(report.delta_top3)">{{ deltaDisplay(report.delta_top3) }}</span></div>
+            <div v-if="hasReportMetrics(report)" class="grid text-xs mb-2">
+              <div v-if="hasTop1(report)" class="col-6 md:col-3"><strong>Top1</strong> {{ pct(report?.top1_accuracy_pre) }} → {{ pct(report?.top1_accuracy_post) }}</div>
+              <div v-if="hasTop3(report)" class="col-6 md:col-3"><strong>Top3</strong> {{ pct(report?.top3_accuracy_pre) }} → {{ pct(report?.top3_accuracy_post) }}</div>
+              <div v-if="hasDeltaTop1(report)" class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(report?.delta_top1)">{{ deltaDisplay(report?.delta_top1) }}</span></div>
+              <div v-if="hasDeltaTop3(report)" class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(report?.delta_top3)">{{ deltaDisplay(report?.delta_top3) }}</span></div>
             </div>
-            <GameReportCaseTable :cases="report.cases" :termMap="termMap" />
+            <GameReportCaseTable :cases="reportCases" :termMap="termMap" />
           </div>
           <div class="col-12">
             <Divider />
@@ -57,6 +49,13 @@
             </div>
           </div>
         </div>
+      </template>
+    </Card>
+    <Card v-else class="mb-4">
+      <template #title>Report Pending</template>
+      <template #content>
+        <p class="text-600">Report data is still loading. Please try again in a moment.</p>
+        <Button label="Back" icon="pi pi-arrow-left" severity="secondary" @click="goBack" />
       </template>
     </Card>
   </div>
@@ -72,7 +71,7 @@ import ProgressBar from 'primevue/progressbar';
 import Divider from 'primevue/divider';
 import { useToast } from 'primevue/usetoast';
 import { useGamesStore } from '../stores/gamesStore';
-import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
+import { getGame, canViewReport, type CanViewReportResponse, type GameReport } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from '../components/GameReportCaseTable.vue';
 
@@ -90,7 +89,7 @@ const loading = ref(true);
 const checking = ref(false);
 const canView = ref(false);
 const polling = ref(false);
-const report: any = ref({});
+const report = ref<GameReport | null>(null);
 // Diagnosis term label cache
 const termMap = ref<Record<number,string>>({});
 const termsLoaded = ref(false);
@@ -104,15 +103,17 @@ async function ensureTerms(){
   } catch(e){ /* ignore */ }
 }
 
+const reportCases = computed(() => report.value?.cases ?? []);
+const totalCases = computed(() => report.value?.total_cases ?? reportCases.value.length);
 const congratsTitle = computed(() => 'Game Complete!');
 const improvementMessage = computed(() => {
-  const r: any = report.value || {};
+  const r = report.value;
   const parts: string[] = [];
-  if (typeof r.delta_top1 === 'number') {
+  if (typeof r?.delta_top1 === 'number') {
     const pts = Math.round(r.delta_top1 * 100);
     if (pts > 0) parts.push(`Top-1 +${pts} pts`); else if (pts === 0) parts.push('Top-1 unchanged');
   }
-  if (typeof r.delta_top3 === 'number') {
+  if (typeof r?.delta_top3 === 'number') {
     const pts = Math.round(r.delta_top3 * 100);
     if (pts > 0) parts.push(`Top-3 +${pts} pts`); else if (pts === 0) parts.push('Top-3 unchanged');
   }
@@ -123,6 +124,26 @@ const improvementMessage = computed(() => {
 function pct(v?: number){ return v==null ? '—' : Math.round(v*100)+'%'; }
 function deltaDisplay(v?: number){ if(v==null) return '—'; const pts=Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
 function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return 'text-green-500'; if(v<0) return 'text-red-500'; return 'text-500'; }
+
+function hasTop1(src?: GameReport | null) {
+  return !!src && (typeof src.top1_accuracy_pre === 'number' || typeof src.top1_accuracy_post === 'number');
+}
+
+function hasTop3(src?: GameReport | null) {
+  return !!src && (typeof src.top3_accuracy_pre === 'number' || typeof src.top3_accuracy_post === 'number');
+}
+
+function hasDeltaTop1(src?: GameReport | null) {
+  return !!src && typeof src.delta_top1 === 'number';
+}
+
+function hasDeltaTop3(src?: GameReport | null) {
+  return !!src && typeof src.delta_top3 === 'number';
+}
+
+function hasReportMetrics(src?: GameReport | null) {
+  return hasTop1(src) || hasTop3(src) || hasDeltaTop1(src) || hasDeltaTop3(src);
+}
 
 
 async function fetchReport(){
@@ -146,6 +167,7 @@ async function fetchReport(){
     }
     const data = await getGame(blockIndex.value);
     report.value = data;
+    canView.value = true;
     // Add/update store summary cache
   // Optionally integrate into store (skipped: upsertGame not exported)
   } catch(e:any){

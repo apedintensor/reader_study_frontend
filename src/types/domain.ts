@@ -79,8 +79,7 @@ export interface ReaderCaseAssignment {
 
 export interface DiagnosisEntryCreate {
   rank: 1 | 2 | 3;
-  raw_text?: string;
-  diagnosis_term_id?: number; // canonical selection
+  raw_text: string;
 }
 
 export interface DiagnosisEntryRead extends DiagnosisEntryCreate { id: number; }

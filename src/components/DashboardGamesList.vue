@@ -30,15 +30,24 @@
               <template v-if="assignmentsByBlock[g.block_index] && assignmentsByBlock[g.block_index].some(a=>!a.completed_post_at)">
                 In progress...
               </template>
-              <template v-else>
-                Summary pending...
-              </template>
             </div>
-            <div v-else class="metrics flex flex-wrap gap-4 text-sm">
+            <div v-else-if="hasReportMetrics(g)" class="metrics flex flex-wrap gap-4 text-sm">
               <div class="acc-group u-surface-overlay">
                 <div class="group-title u-heading-sub">Your Accuracy</div>
-                <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.top1_accuracy_pre) }} → {{ pct(g.top1_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top1)]">({{ deltaDisplay(g.delta_top1) }})</span></span></div>
-                <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.top3_accuracy_pre) }} → {{ pct(g.top3_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top3)]">({{ deltaDisplay(g.delta_top3) }})</span></span></div>
+                <div v-if="hasTop1(g)" class="stat-row flex justify-content-between">
+                  <span>Top1</span>
+                  <span>
+                    {{ pct(g.top1_accuracy_pre) }} → {{ pct(g.top1_accuracy_post) }}
+                    <span v-if="hasDeltaTop1(g)" :class="['ml-1', deltaClass(g.delta_top1)]">({{ deltaDisplay(g.delta_top1) }})</span>
+                  </span>
+                </div>
+                <div v-if="hasTop3(g)" class="stat-row flex justify-content-between">
+                  <span>Top3</span>
+                  <span>
+                    {{ pct(g.top3_accuracy_pre) }} → {{ pct(g.top3_accuracy_post) }}
+                    <span v-if="hasDeltaTop3(g)" :class="['ml-1', deltaClass(g.delta_top3)]">({{ deltaDisplay(g.delta_top3) }})</span>
+                  </span>
+                </div>
               </div>
             </div>
             <!-- Removed per-game progress bar for a cleaner, more compact card -->
@@ -52,11 +61,11 @@
                     <span>Game Report</span>
                     <span class="text-xs text-500">{{ reportState[g.block_index].data.total_cases }} cases</span>
                   </div>
-                  <div class="grid text-xs mb-2">
-                    <div class="col-6 md:col-3"><strong>Top1</strong> {{ pct(reportState[g.block_index].data.top1_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top1_accuracy_post) }}</div>
-                    <div class="col-6 md:col-3"><strong>Top3</strong> {{ pct(reportState[g.block_index].data.top3_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top3_accuracy_post) }}</div>
-                    <div class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top1)">{{ deltaDisplay(reportState[g.block_index].data.delta_top1) }}</span></div>
-                    <div class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top3)">{{ deltaDisplay(reportState[g.block_index].data.delta_top3) }}</span></div>
+                  <div v-if="hasReportMetrics(reportState[g.block_index].data)" class="grid text-xs mb-2">
+                    <div v-if="hasTop1(reportState[g.block_index].data)" class="col-6 md:col-3"><strong>Top1</strong> {{ pct(reportState[g.block_index].data.top1_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top1_accuracy_post) }}</div>
+                    <div v-if="hasTop3(reportState[g.block_index].data)" class="col-6 md:col-3"><strong>Top3</strong> {{ pct(reportState[g.block_index].data.top3_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top3_accuracy_post) }}</div>
+                    <div v-if="hasDeltaTop1(reportState[g.block_index].data)" class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top1)">{{ deltaDisplay(reportState[g.block_index].data.delta_top1) }}</span></div>
+                    <div v-if="hasDeltaTop3(reportState[g.block_index].data)" class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top3)">{{ deltaDisplay(reportState[g.block_index].data.delta_top3) }}</span></div>
                   </div>
                   <GameReportCaseTable :cases="reportState[g.block_index].data.cases" :termMap="termMap" />
                 </div>
@@ -80,7 +89,7 @@ import { useGamesStore } from '../stores/gamesStore';
 import { useUserStore } from '../stores/userStore';
 import { useCaseStore } from '../stores/caseStore';
 import { useToast } from 'primevue/usetoast';
-import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
+import { getGame, canViewReport, type CanViewReportResponse, type GameSummary } from '../api/games';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from './GameReportCaseTable.vue';
 
@@ -140,6 +149,26 @@ const reportState = ref<Record<number, ReportState>>({});
 function pct(v?: number) { return v == null ? '—' : Math.round(v*100)+'%'; }
 function deltaDisplay(v?: number){ if(v==null) return '—'; const pts = Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
 function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return 'text-green-500'; if(v<0) return 'text-red-500'; return 'text-500'; }
+
+function hasTop1(g?: GameSummary | null) {
+  return !!g && (typeof g.top1_accuracy_pre === 'number' || typeof g.top1_accuracy_post === 'number');
+}
+
+function hasTop3(g?: GameSummary | null) {
+  return !!g && (typeof g.top3_accuracy_pre === 'number' || typeof g.top3_accuracy_post === 'number');
+}
+
+function hasDeltaTop1(g?: GameSummary | null) {
+  return !!g && typeof g.delta_top1 === 'number';
+}
+
+function hasDeltaTop3(g?: GameSummary | null) {
+  return !!g && typeof g.delta_top3 === 'number';
+}
+
+function hasReportMetrics(g?: GameSummary | null) {
+  return hasTop1(g) || hasTop3(g) || hasDeltaTop1(g) || hasDeltaTop3(g);
+}
 // Removed per-game progress Tag display helpers
 
 async function onAdvance(){

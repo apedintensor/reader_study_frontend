@@ -1,4 +1,5 @@
 import apiClient from '.';
+import type { DiagnosisEntryRead } from '../types/domain';
 
 export interface GameSummary {
   block_index: number;
@@ -11,6 +12,26 @@ export interface GameSummary {
   peer_percentile_top1?: number;
   peer_percentile_top3?: number;
   created_at?: string;
+  total_cases?: number;
+  cases?: GameReportCase[];
+}
+
+export interface GameReportCase {
+  case_id: number;
+  case_number?: number;
+  case_display_number?: number;
+  ground_truth_diagnosis_id?: number | null;
+  ground_truth_label?: string | null;
+  ground_truth?: { id: number; name: string } | null;
+  pre_assessment_id?: number | null;
+  post_assessment_id?: number | null;
+  pre_diagnosis_entries?: DiagnosisEntryRead[] | null;
+  post_diagnosis_entries?: DiagnosisEntryRead[] | null;
+}
+
+export interface GameReport extends GameSummary {
+  cases: GameReportCase[];
+  total_cases: number;
 }
 
 export interface GameProgressResponse {
@@ -43,9 +64,10 @@ export async function getGames(): Promise<GameSummary[]> {
 }
 
 // Fetch a specific block report
-export async function getGame(block: number): Promise<GameSummary> {
-  const { data } = await apiClient.get<GameSummary>(`/api/game/report/${block}`);
-  return data;
+export async function getGame(block: number): Promise<GameReport> {
+  const { data } = await apiClient.get<GameReport>(`/api/game/report/${block}`);
+  const safeCases = Array.isArray(data?.cases) ? data.cases : [];
+  return { ...data, cases: safeCases, total_cases: data?.total_cases ?? safeCases.length };
 }
 
 // Start (or resume) the next game block
