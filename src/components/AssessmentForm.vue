@@ -176,6 +176,7 @@ import DiagnosisAutocomplete from './DiagnosisAutocomplete.vue';
 import { ref, computed, watch } from 'vue';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
+import type { InvestigationPlanChoice, NextStepChoice } from '../types/domain';
 
 // Define tooltip texts
 const changeDiagnosisTooltipText = "Indicate if the AI's suggestions led you to change your primary diagnosis.";
@@ -193,8 +194,8 @@ interface FormData {
   diagnosisRank3Text: string | null;
   confidenceScore: number;
   certaintyScore: number;
-  investigationPlan: 'none' | 'biopsy' | 'other' | null;
-  nextStep: 'reassure' | 'manage' | 'refer' | null;
+  investigationPlan: InvestigationPlanChoice | null;
+  nextStep: NextStepChoice | null;
   // Post-AI specific fields - ensure they are optional or handled in parent
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;

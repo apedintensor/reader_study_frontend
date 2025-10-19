@@ -1,4 +1,4 @@
-import type { PrePostComparableSubset } from '../types/domain';
+import type { InvestigationPlanChoice, NextStepChoice, PrePostComparableSubset } from '../types/domain';
 
 // Compute whether POST assessment differs from PRE snapshot.
 // Differences: any diagnosis (by rank) changed (id or raw_text), or any tracked field changed.
@@ -35,8 +35,8 @@ export function computeWasUpdated(pre: PrePostComparableSubset, post: PrePostCom
 export function buildComparableSubset(args: {
   diagnostic_confidence?: number;
   management_confidence?: number;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_plan?: InvestigationPlanChoice | null;
+  next_step?: NextStepChoice | null;
   diagnoses: Array<{ rank: number; diagnosis_id?: number; raw_text?: string } | undefined | null>;
 }): PrePostComparableSubset {
   return {

@@ -10,6 +10,7 @@ import { enableBlockFeedback } from '../featureFlags';
 import BlockFeedbackPanel from '../components/BlockFeedbackPanel.vue';
 import apiClient from '../api';
 import type { MenuItem } from 'primevue/menuitem';
+import type { InvestigationAction, InvestigationPlanChoice, NextStepAction, NextStepChoice } from '../types/domain';
 
 // Import new components
 import CaseProgressSteps from '../components/CaseProgressSteps.vue';
@@ -57,8 +58,8 @@ interface AssessmentCreate {
   phase: 'PRE' | 'POST';
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_action?: InvestigationAction | null;
+  next_step_action?: NextStepAction | null;
   changed_primary_diagnosis?: boolean | null; // POST only
   changed_management_plan?: boolean | null;   // POST only
   ai_usefulness?: string | null;              // POST only
@@ -116,6 +117,28 @@ function onDiagnosisSelected(payload: { rank: number; term: { id: number; name: 
   selectedDiagnosisByRank[payload.rank] = payload.term;
   console.debug('Diagnosis selected', payload.rank, payload.term);
 }
+
+const investigationActionMap: Record<InvestigationPlanChoice, InvestigationAction> = {
+  none: 'NONE',
+  biopsy: 'BIOPSY',
+  other: 'OTHER'
+};
+
+const nextStepActionMap: Record<NextStepChoice, NextStepAction> = {
+  reassure: 'REASSURE',
+  manage: 'MANAGE_MYSELF',
+  refer: 'REFER'
+};
+
+const toInvestigationAction = (choice: InvestigationPlanChoice | null | undefined): InvestigationAction | null => {
+  if (!choice) return null;
+  return investigationActionMap[choice];
+};
+
+const toNextStepAction = (choice: NextStepChoice | null | undefined): NextStepAction | null => {
+  if (!choice) return null;
+  return nextStepActionMap[choice];
+};
 
 function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreateTS[] {
   const src = phase === 'PRE' ? preAiFormData : postAiFormData;
@@ -221,8 +244,8 @@ const preAiFormData = reactive({
   diagnosisRank3Text: null as string | null,
   confidenceScore: 3,
   certaintyScore: 3,
-  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
-  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
+  investigationPlan: null as InvestigationPlanChoice | null,
+  nextStep: null as NextStepChoice | null,
 });
 
 const postAiFormData = reactive({
@@ -234,8 +257,8 @@ const postAiFormData = reactive({
   changeDiagnosis: null as boolean | null,
   changeManagement: null as boolean | null,
   aiUsefulness: null as string | null,
-  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
-  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
+  investigationPlan: null as InvestigationPlanChoice | null,
+  nextStep: null as NextStepChoice | null,
 });
 
 const currentFormData = computed(() => isPostAiPhase.value ? postAiFormData : preAiFormData);
@@ -570,8 +593,8 @@ const handlePreAiSubmit = async () => {
       phase: 'PRE',
       diagnostic_confidence: preAiFormData.confidenceScore,
       management_confidence: preAiFormData.certaintyScore,
-  investigation_plan: preAiFormData.investigationPlan,
-  next_step: preAiFormData.nextStep,
+      investigation_action: toInvestigationAction(preAiFormData.investigationPlan),
+      next_step_action: toNextStepAction(preAiFormData.nextStep),
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting PRE assessment payload', assessmentPayload);
@@ -675,8 +698,8 @@ const handlePostAiSubmit = async () => {
       changed_primary_diagnosis: postAiFormData.changeDiagnosis,
       changed_management_plan: postAiFormData.changeManagement,
       ai_usefulness: postAiFormData.aiUsefulness,
-  investigation_plan: postAiFormData.investigationPlan,
-  next_step: postAiFormData.nextStep,
+      investigation_action: toInvestigationAction(postAiFormData.investigationPlan),
+      next_step_action: toNextStepAction(postAiFormData.nextStep),
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting POST assessment payload', assessmentPayload);
