@@ -248,7 +248,7 @@ watch(caseId, () => {
 });
 
 // Percent with partial credit for Pre-AI: each pre-only case counts as 0.5, post counts as 1
-// Denominator hard-coded to 10 (fixed game size)
+// Denominator defaults to 15 (current game size)
 const gameProgressPercent = computed(() => {
   const prog = blockProgress.value; if (!prog) return 0;
   const { pre = 0, post = 0 } = prog as any;

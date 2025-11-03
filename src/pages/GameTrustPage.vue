@@ -108,7 +108,7 @@ async function handleSubmit() {
   if (selectedScore.value == null || submitting.value) return;
   submitting.value = true;
   try {
-    await submitBlockTrust(blockIndex.value, { score: selectedScore.value });
+    await submitBlockTrust(blockIndex.value, { trust_ai_score: selectedScore.value });
     toast.add({ severity: 'success', summary: 'Thank you', detail: 'Trust feedback recorded.', life: 2500 });
     router.replace({ path: `/game/report/${blockIndex.value}` });
   } catch (error: any) {

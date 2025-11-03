@@ -41,7 +41,7 @@ export interface BlockTrustResponse {
 }
 
 export interface BlockTrustPayload {
-  score: number;
+  trust_ai_score: number;
 }
 
 export interface GameProgressResponse {
@@ -99,7 +99,7 @@ export async function getBlockTrust(block: number): Promise<BlockTrustResponse |
 }
 
 export async function submitBlockTrust(block: number, payload: BlockTrustPayload): Promise<BlockTrustResponse> {
-  const body = { trust_ai_score: payload.score };
+  const body = { trust_ai_score: payload.trust_ai_score };
   const { data } = await apiClient.patch<BlockTrustResponse>(`/api/game/block/${block}/trust`, body);
   return data;
 }

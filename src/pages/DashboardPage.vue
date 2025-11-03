@@ -16,7 +16,7 @@
             <ol class="onboarding-steps">
               <li><strong>Start the demo.</strong> Use the <em>Start Demo</em> button below to walk through a practice case.</li>
               <li><strong>Complete both assessments.</strong> Fill out the Pre-AI and Post-AI forms so you can see how the AI guidance feels end to end.</li>
-              <li><strong>Start a real game.</strong> When you are ready, choose <em>Start Game</em> on the completion screen to begin your first 10-case block.</li>
+              <li><strong>Start a real game.</strong> When you are ready, choose <em>Start Game</em> on the completion screen to begin your first 15-case block.</li>
             </ol>
             <p class="text-sm text-600 mt-3">You can repeat the warm-up any time. Your official progress begins once you launch a real game block.</p>
           </template>
