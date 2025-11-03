@@ -21,7 +21,7 @@ Minimum 10 cases per reader.
 Study arms: HUMAN, HUMAN_AI; POST phase only if HUMAN_AI.
 PRE inputs: top-3 ranked diagnoses (1 required, 2/3 optional), diagnostic confidence (1–5), biopsy yes/no, referral yes/no, management certainty (1–5).
 POST: show AI top-3 suggestions; user chooses No change vs Update; if Update: can modify all PRE inputs; track was_updated.
-Gamify every 10 cases: show block stats (Top-1/Top-3 pre vs post, peer percentiles).
+Gamify every 15 cases: show block stats (Top-1/Top-3 pre vs post, peer percentiles).
 Autofill diagnosis text with mapping pipeline (progressively enriched suggestions).
 Remove management notes & case metadata editing.
 Display case analytics (malignancy flag, superclass) if present.

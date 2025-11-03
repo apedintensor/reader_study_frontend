@@ -5,10 +5,10 @@ Purpose
 - Provide concrete endpoint sketches and state transitions for the frontend and backend implementers.
 
 Checklist (requirements)
-- Start a new game that assigns a block of 10 cases to a user.
+- Start a new game that assigns a block of 15 to a user.
 - Allow resume: if the user exits mid-block, resume where they left off.
 - Prevent starting a new game while an unfinished game exists for that user.
-- When 10 cases are finished, compute per-block Top‑1/Top‑3 accuracy and peer percentile, store results in `block_feedback`, and make a report-card available.
+- When 15 cases are finished, compute per-block Top‑1/Top‑3 accuracy and peer percentile, store results in `block_feedback`, and make a report-card available.
 
 High-level flow
 1. Frontend: user clicks Start Game.

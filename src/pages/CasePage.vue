@@ -252,17 +252,17 @@ watch(caseId, () => {
 const gameProgressPercent = computed(() => {
   const prog = blockProgress.value; if (!prog) return 0;
   const { pre = 0, post = 0 } = prog as any;
-  const TOTAL = 10;
+  const totalCases = Math.max(1, (prog as any).total ?? 15);
   const preOnly = Math.max(0, pre - post);
-  const weighted = Math.min(TOTAL, post + preOnly * 0.5);
-  return Math.round((weighted / TOTAL) * 100);
+  const weighted = Math.min(totalCases, post + preOnly * 0.5);
+  return Math.round((weighted / totalCases) * 100);
 });
 
 // Label for inside bar: show completed and in-progress counts
 const gameProgressBarLabel = computed(() => {
   const prog = blockProgress.value; if(!prog) return '';
   const { pre = 0, post = 0 } = prog as any;
-  const total = 10;
+  const total = (prog as any).total ?? 15;
   const preOnly = Math.max(0, pre - post);
   return preOnly > 0
     ? `${post}/${total} completed • ${preOnly} pre-AI`
@@ -759,11 +759,11 @@ const handlePostAiSubmit = async () => {
     // Navigation logic now driven by backend flags
     try {
       if (data?.block_complete && data?.block_index != null) {
-        console.debug('Backend indicates block complete; navigating to report', {
+        console.debug('Backend indicates block complete; navigating to trust survey', {
           block_index: data.block_index,
           report_available: data.report_available
         });
-        router.push({ path: `/game/report/${data.block_index}` });
+        router.push({ path: `/game/trust/${data.block_index}` });
         return; // stop further advancement calls
       }
       // Not complete yet -> request next assignment via unified flow

@@ -34,6 +34,16 @@ export interface GameReport extends GameSummary {
   total_cases: number;
 }
 
+export interface BlockTrustResponse {
+  score: number;
+  trust_ai_score?: number;
+  submitted_at?: string;
+}
+
+export interface BlockTrustPayload {
+  score: number;
+}
+
 export interface GameProgressResponse {
   total_cases: number;
   completed_cases: number; // POST phase done
@@ -68,6 +78,30 @@ export async function getGame(block: number): Promise<GameReport> {
   const { data } = await apiClient.get<GameReport>(`/api/game/report/${block}`);
   const safeCases = Array.isArray(data?.cases) ? data.cases : [];
   return { ...data, cases: safeCases, total_cases: data?.total_cases ?? safeCases.length };
+}
+
+export async function getBlockTrust(block: number): Promise<BlockTrustResponse | null> {
+  try {
+    const { data } = await apiClient.get<BlockTrustResponse>(`/api/game/block/${block}/trust`);
+    if (data) {
+      const score = typeof data.trust_ai_score === 'number' ? data.trust_ai_score : data.score;
+      if (typeof score === 'number') {
+        return { ...data, score };
+      }
+    }
+    return null;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function submitBlockTrust(block: number, payload: BlockTrustPayload): Promise<BlockTrustResponse> {
+  const body = { trust_ai_score: payload.score };
+  const { data } = await apiClient.patch<BlockTrustResponse>(`/api/game/block/${block}/trust`, body);
+  return data;
 }
 
 // Start (or resume) the next game block

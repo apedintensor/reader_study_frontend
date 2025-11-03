@@ -6,7 +6,7 @@ This document summarizes all backend data model and API changes required for the
 ## High-Level Changes
 
 1. Assessments no longer use a composite key `(user_id, case_id, is_post_ai)`.
-2. New entity `ReaderCaseAssignment` drives game blocks (10 cases per block) and links user ↔ case.
+2. New entity `ReaderCaseAssignment` drives game blocks (15 per block) and links user ↔ case.
 3. Each assignment can have up to 2 assessments distinguished by `phase` = `PRE` or `POST`.
 4. Diagnoses are now stored as ranked `DiagnosisEntry` (1..3) per assessment.
 5. Block completion triggers creation of `BlockFeedback` summarizing accuracy deltas and (later) percentiles.

@@ -4,8 +4,8 @@
       <template #title>AI Predictions</template>
       <template #content>
         <div v-if="aiOutputs && aiOutputs.length > 0">
-          <DataTable :value="aiOutputs" 
-                     class="p-datatable-sm" 
+          <DataTable :value="aiOutputs"
+                     class="p-datatable-sm"
                      responsiveLayout="scroll"
                      sortField="rank"
                      :sortOrder="1">
@@ -14,13 +14,7 @@
                 <Tag :value="slotProps.data.rank" rounded />
               </template>
             </Column>
-            <Column field="prediction.name" header="Predicted Diagnosis" sortable style="width: 60%"></Column>
-            <Column field="confidence_score" header="Confidence" sortable style="width: 25%">
-              <template #body="slotProps">
-                <ProgressBar :value="slotProps.data.confidence_score * 100" :showValue="false" style="height: .8em" />
-                <span class="ml-2">{{ (slotProps.data.confidence_score * 100).toFixed(0) }}%</span>
-              </template>
-            </Column>
+            <Column field="prediction.name" header="Predicted Diagnosis" sortable style="width: 85%"></Column>
           </DataTable>
         </div>
         <div v-else>
@@ -36,7 +30,6 @@ import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
-import ProgressBar from 'primevue/progressbar';
 
 interface DiagnosisTermRead {
   name: string;
@@ -59,7 +52,4 @@ defineProps<{
 </script>
 
 <style scoped>
-.ml-2 {
-  margin-left: 0.5rem;
-}
 </style>

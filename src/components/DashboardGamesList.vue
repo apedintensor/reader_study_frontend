@@ -3,8 +3,9 @@
     <template #title>
       <div class="flex flex-column align-items-center gap-3 w-full">
         <span class="title-line games-intro">
-          <span class="line">Complete at least 10 cases to finish one game,</span>
-          <span class="line">but feel free to take more!</span>
+          <span class="line">Complete at least 15 cases to finish a round,</span>
+          <span class="line">but feel free to do more!</span>
+          <span class="line">You can resume the game anytime.</span>
         </span>
         <div class="start-btn-container">
           <Button v-if="!allExhausted" :label="nextActionLabel" icon="pi pi-play" class="p-button-rounded big-start-btn cta-start-btn" :loading="advancing" :disabled="advancing" @click="onAdvance" />

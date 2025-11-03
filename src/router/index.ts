@@ -7,6 +7,7 @@ import CasePage from '../pages/CasePage.vue';
 import ReviewPage from '../pages/ReviewPage.vue';
 import GameReportPage from '../pages/GameReportPage.vue';
 import DemoCompletePage from '../pages/DemoCompletePage.vue';
+import GameTrustPage from '../pages/GameTrustPage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,6 +43,12 @@ const router = createRouter({
       path: '/game/report/:block',
       name: 'game-report',
       component: GameReportPage,
+      meta: { requiresAuth: true }
+    }
+    ,{
+      path: '/game/trust/:block',
+      name: 'game-trust',
+      component: GameTrustPage,
       meta: { requiresAuth: true }
     }
     ,{
