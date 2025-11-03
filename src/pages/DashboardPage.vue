@@ -198,6 +198,15 @@ const loadAndDisplayProgress = async () => {
       }
     }
 
+    const hasHistory = !!progress.value && (
+      (progress.value.completed_cases ?? 0) > 0 ||
+      (progress.value.assigned_cases ?? 0) > 0 ||
+      (progress.value.total_cases ?? 0) === 0 ? false : (progress.value.remaining_cases ?? 0) < (progress.value.total_cases ?? 0)
+    );
+    if (hasHistory || gamesStore.games.length > 0) {
+      userStore.markHasGameHistory();
+    }
+
     // Log detailed progress state
     const progressSummary = {
       total: cases.value.length,
