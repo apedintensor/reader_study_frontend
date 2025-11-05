@@ -24,6 +24,70 @@ export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(localStorage.getItem('access_token'));
   const isNewUser = ref<boolean>(false);
 
+  const PROGRESS_CACHE_KEY = 'gamesReportsCachedByUser';
+  const LEGACY_PROGRESS_KEY = 'gamesReportsCached';
+
+  const loadProgressCache = (): Record<string, boolean> => {
+    try {
+      const raw = localStorage.getItem(PROGRESS_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed as Record<string, boolean>;
+      }
+    } catch (err) {
+      console.warn('Unable to parse progress cache, resetting', err);
+    }
+    return {};
+  };
+
+  const persistProgressCache = (cache: Record<string, boolean>) => {
+    localStorage.setItem(PROGRESS_CACHE_KEY, JSON.stringify(cache));
+  };
+
+  const removeLegacyProgressCache = () => {
+    if (localStorage.getItem(LEGACY_PROGRESS_KEY) != null) {
+      localStorage.removeItem(LEGACY_PROGRESS_KEY);
+    }
+  };
+
+  const markProgressForUser = (id: number | null | undefined) => {
+    if (!id) return;
+    const cache = loadProgressCache();
+    if (cache[id]) return;
+    cache[id] = true;
+    persistProgressCache(cache);
+  };
+
+  const hasProgressForUser = (id: number | null | undefined) => {
+    if (!id) return false;
+    const cache = loadProgressCache();
+    return !!cache[id];
+  };
+
+  const resetDependentStores = () => {
+    import('./gamesStore').then(({ useGamesStore }) => {
+      try {
+        const store = useGamesStore();
+        if (typeof store.resetStore === 'function') {
+          store.resetStore();
+        }
+      } catch (err) {
+        console.warn('Failed to reset games store', err);
+      }
+    }).catch(err => console.warn('Unable to import gamesStore for reset', err));
+
+    import('./caseStore').then(({ useCaseStore }) => {
+      try {
+        const store = useCaseStore();
+        if (typeof store.resetStore === 'function') {
+          store.resetStore();
+        }
+      } catch (err) {
+        console.warn('Failed to reset case store', err);
+      }
+    }).catch(err => console.warn('Unable to import caseStore for reset', err));
+  };
+
   // Actions
   function setToken(newToken: string) {
     token.value = newToken;
@@ -36,9 +100,9 @@ export const useUserStore = defineStore('user', () => {
     token.value = null;
     localStorage.removeItem('userData');
     localStorage.removeItem('access_token');
-    localStorage.removeItem('gamesReportsCached');
     isNewUser.value = false;
     delete apiClient.defaults.headers.common['Authorization'];
+    resetDependentStores();
   }
 
   async function fetchCurrentUser() {
@@ -50,12 +114,15 @@ export const useUserStore = defineStore('user', () => {
     try {
   // Updated endpoint: backend now exposes /api/auth/me
   const response = await apiClient.get<User>('/api/auth/me');
+      const previousId = user.value?.id ?? null;
       user.value = response.data;
       localStorage.setItem('userData', JSON.stringify(user.value));
       console.log("Current user fetched:", user.value);
-  // Lightweight new user heuristic: if no cached games list yet, mark new until dashboard loads
-  const cachedReports = localStorage.getItem('gamesReportsCached');
-  isNewUser.value = !cachedReports;
+    removeLegacyProgressCache();
+    isNewUser.value = !hasProgressForUser(user.value?.id);
+      if (previousId && previousId !== user.value.id) {
+        resetDependentStores();
+      }
       return true;
     } catch (error: any) {
       console.error('Failed to fetch current user:', error);
@@ -75,7 +142,15 @@ export const useUserStore = defineStore('user', () => {
 
   function markHasGameHistory() {
     isNewUser.value = false;
-    localStorage.setItem('gamesReportsCached', '1');
+    markProgressForUser(user.value?.id);
+  }
+
+  function evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment }: { hasCompletedReports: boolean; hasActiveAssignment: boolean }) {
+    const newStatus = !(hasCompletedReports || hasActiveAssignment);
+    isNewUser.value = newStatus;
+    if (!newStatus) {
+      markProgressForUser(user.value?.id);
+    }
   }
 
   function loadFromLocalStorage() {
@@ -118,6 +193,7 @@ export const useUserStore = defineStore('user', () => {
     setToken,
     logout,
     markHasGameHistory,
+  evaluateNewUserHeuristic,
     fetchCurrentUser,
     loadFromLocalStorage, // Keep if external loading is needed
     clearAuth, // Expose clearAuth

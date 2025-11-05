@@ -29,6 +29,16 @@ export const useCaseStore = defineStore('case', () => {
   // Use reactive object instead of ref wrapper to avoid manual refresh hacks
   const caseProgress = reactive<Record<number, CaseProgress>>({});
 
+  const resetStore = () => {
+    cases.value = [];
+    currentIndex.value = 0;
+    completedCases.value = [];
+    Object.keys(caseProgress).forEach(k => {
+      delete caseProgress[Number(k)];
+    });
+    localStorage.removeItem('caseProgress');
+  };
+
   // Fetch assessments and update progress
   async function loadAssessmentsAndProgress(userId: number) {
     try {
@@ -325,6 +335,7 @@ export const useCaseStore = defineStore('case', () => {
     currentIndex,
     completedCases,
   caseProgress,
+    resetStore,
     loadCases,
     loadAssessmentsAndProgress,
   loadAssessmentsAcrossBlocks,

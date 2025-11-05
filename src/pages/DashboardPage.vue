@@ -156,6 +156,26 @@ const completionPercentage = computed(() => {
   return cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0;
 });
 
+const reconcileNewUserFlag = () => {
+  if (!userStore.isAuthenticated) return;
+  const snapshot = progress.value;
+  const hasCompletedReports = (snapshot?.completed_cases ?? completedCases.value.length) > 0;
+  const caseProgressEntries = Object.values(caseStore.caseProgress ?? {});
+  const hasIncompleteLocal = caseProgressEntries.some(p => p?.preCompleted && !p?.postCompleted);
+  const hasStartedLocally = caseProgressEntries.some(p => p?.preCompleted || p?.postCompleted);
+  const hasAssignmentsInStore = Object.values(gamesStore.assignmentsByBlock || {}).some(list =>
+    Array.isArray(list) && list.some(a => !a?.completed_post_at)
+  );
+  const apiInProgressValue = snapshot?.in_progress_cases;
+  const apiInProgress = typeof apiInProgressValue === 'number' ? apiInProgressValue : 0;
+  const hasActiveAssignment =
+    hasAssignmentsInStore ||
+    hasIncompleteLocal ||
+    hasStartedLocally ||
+    apiInProgress > 0;
+  userStore.evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment });
+};
+
 // focusBlockStart removed with cases table
 
 // filteredCases removed with case list section
@@ -178,7 +198,8 @@ const loadAndDisplayProgress = async () => {
 
     // Try fetching authoritative progress snapshot
     try {
-      progress.value = await getGameProgress();
+  progress.value = await getGameProgress();
+  reconcileNewUserFlag();
     } catch (err) {
       console.warn('Failed to fetch /game/progress, falling back to local aggregation', err);
       // Fallback: aggregate across blocks locally
@@ -195,16 +216,8 @@ const loadAndDisplayProgress = async () => {
             unassigned_cases: 0,
             in_progress_cases: Object.values(caseStore.caseProgress).filter(p=>p.preCompleted && !p.postCompleted).length
         };
+        reconcileNewUserFlag();
       }
-    }
-
-    const hasHistory = !!progress.value && (
-      (progress.value.completed_cases ?? 0) > 0 ||
-      (progress.value.assigned_cases ?? 0) > 0 ||
-      (progress.value.total_cases ?? 0) === 0 ? false : (progress.value.remaining_cases ?? 0) < (progress.value.total_cases ?? 0)
-    );
-    if (hasHistory || gamesStore.games.length > 0) {
-      userStore.markHasGameHistory();
     }
 
     // Log detailed progress state
@@ -238,6 +251,7 @@ const loadAndDisplayProgress = async () => {
     });
   } finally {
     loading.value = false;
+    reconcileNewUserFlag();
   }
 };
 
@@ -294,8 +308,16 @@ onUnmounted(()=>{
 });
 
 // Add watch for assessment updates
+watch(() => progress.value, () => {
+  reconcileNewUserFlag();
+});
+
 watch(() => caseStore.caseProgress, () => {
-  // This will trigger reactivity when assessment status changes
+  reconcileNewUserFlag();
+}, { deep: true });
+
+watch(() => gamesStore.assignmentsByBlock, () => {
+  reconcileNewUserFlag();
 }, { deep: true });
 
 watch(() => userStore.isNewUser, (val) => {

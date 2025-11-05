@@ -16,6 +16,24 @@ export const useGamesStore = defineStore('games', () => {
   const activeRemaining = ref<number | null>(null); // remaining not POST-finished in current block
   const activeStatus = ref<'started' | 'continuing' | 'exhausted' | null>(null);
 
+  const resetStore = () => {
+    Object.values(pollingHandles.value).forEach(handle => {
+      try {
+        clearInterval(handle);
+      } catch {/* noop */}
+    });
+    games.value = [];
+    assignmentsByBlock.value = {};
+    blockSizes.value = {};
+    loadingGames.value = false;
+    loadingAssignments.value = false;
+    creatingNext.value = false;
+    pollingHandles.value = {};
+    activeAssignment.value = null;
+    activeRemaining.value = null;
+    activeStatus.value = null;
+  };
+
   function getBlockAssignments(block: number) {
     return assignmentsByBlock.value[block] || [];
   }
@@ -217,5 +235,5 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
-  return { games, assignmentsByBlock, loadingGames, loadingAssignments, creatingNext, loadAllGames, loadGame, startNextGame, advanceToNext, activeAssignment, activeRemaining, activeStatus, getBlockAssignments, hasIncompleteBlock, latestBlockIndex, blockProgress, refreshSummaryIfCompleted, loadAssignments, ensureAssignmentsLoaded, startSummaryPolling, stopSummaryPolling, hydrateActiveGame };
+  return { games, assignmentsByBlock, loadingGames, loadingAssignments, creatingNext, loadAllGames, loadGame, startNextGame, advanceToNext, activeAssignment, activeRemaining, activeStatus, getBlockAssignments, hasIncompleteBlock, latestBlockIndex, blockProgress, refreshSummaryIfCompleted, loadAssignments, ensureAssignmentsLoaded, startSummaryPolling, stopSummaryPolling, hydrateActiveGame, resetStore };
 });
